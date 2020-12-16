@@ -1,0 +1,148 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 1.  Vue如何构建响应式系统 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="1.  Vue如何构建响应式系统 - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">1.  Vue如何构建响应式系统</h1><div class="post-info">2020-11-21<p class="visit"><i data-identity="2020/11/21/vue01/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>vue2.x版本的响应系统是基于Object.defineProperty实现的，我们看看vue源码的具体代码</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> Observer = <span class="function"><span class="keyword">function</span> <span class="title">Observer</span>(<span class="params">value</span>) </span>&#123;</span><br><span class="line">  <span class="built_in">this</span>.value = value;</span><br><span class="line">  <span class="built_in">this</span>.dep = <span class="keyword">new</span> Dep(value);</span><br><span class="line">  <span class="built_in">this</span>.vmCount = <span class="number">0</span>;</span><br><span class="line">  def(value, <span class="string">&#x27;__ob__&#x27;</span>, <span class="built_in">this</span>);</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">Array</span>.isArray(value)) &#123; <span class="comment">//构建数组对象的响应式系统</span></span><br><span class="line">     protoAugment(value, arrayMethods);</span><br><span class="line">    <span class="built_in">this</span>.observeArray(value);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123; <span class="comment">//构建普通对象的响应式系统</span></span><br><span class="line">    <span class="built_in">this</span>.walk(value);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到在构建响应式系统时，对普通对象和数组对象做了不同的处理，我们先看普通对象是如何构建响应式系统的？</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">Observer.prototype.walk = <span class="function"><span class="keyword">function</span> <span class="title">walk</span>(<span class="params">obj</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> keys = <span class="built_in">Object</span>.keys(obj);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; keys.length; i++) &#123;</span><br><span class="line">      defineReactive$$1(obj, keys[i]);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineReactive$$1</span>(<span class="params"> obj, key, val, customSetter, shallow </span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> dep = <span class="keyword">new</span> Dep(key);</span><br><span class="line">    <span class="keyword">var</span> childOb = !shallow &amp;&amp; observe(val);</span><br><span class="line">    <span class="built_in">Object</span>.defineProperty(obj, key, &#123;</span><br><span class="line">      enumerable: <span class="literal">true</span>,</span><br><span class="line">      configurable: <span class="literal">true</span>,</span><br><span class="line">      get: <span class="function"><span class="keyword">function</span> <span class="title">reactiveGetter</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> value = getter ? getter.call(obj) : val;</span><br><span class="line">        <span class="comment">// TODO </span></span><br><span class="line">        <span class="keyword">return</span> value</span><br><span class="line">      &#125;,</span><br><span class="line">      set: <span class="function"><span class="keyword">function</span> <span class="title">reactiveSetter</span>(<span class="params">newVal</span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> value = getter ? getter.call(obj) : val;</span><br><span class="line">        <span class="comment">// 老值和新值相等 就终止函数</span></span><br><span class="line">        <span class="keyword">if</span> (newVal === value || (newVal !== newVal &amp;&amp; value !== value)) &#123;</span><br><span class="line">          <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (customSetter) &#123;</span><br><span class="line">          customSetter();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (getter &amp;&amp; !setter) &#123; <span class="keyword">return</span> &#125;</span><br><span class="line">        <span class="keyword">if</span> (setter) &#123;</span><br><span class="line">          setter.call(obj, newVal);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          val = newVal;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 劫持新设置的值  </span></span><br><span class="line">        childOb = !shallow &amp;&amp; observe(newVal);</span><br><span class="line">        dep.notify(); </span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到构建数据对象data的响应式系统很简单，就是给data的每个key都设置get/set钩子,用户每次获取值的时候例如<code>this.data.msg</code>，都会触发key的get钩子，设置新值的时候例如<code>this.data.msg=&#39;新的msg&#39;</code>，都会触发key的set钩子，Vue在set/get钩子里面做了很多事情，不过这都是后面章节我们才讨论的,不管怎样，普通对象的响应式系统确实是通过<code> Object.defineProperty</code>这个API很轻易的构建出来了。<br>还有一个问题，平时我们都是<code>this.msg</code>就可以获取data中的<code>msg</code>了，现在这个响应式系统只能通过<code>this.data.msg</code>拿到data中的<code>msg</code>。很显然，这个响应式系统并不完善，我们看看vue源码如何实现更完善的响应式系统的？先是把data数据对象存到<code>_data</code>中，proxy函数的功能就是每次访问<code>vm[key]</code>时都会返回<code>vm._data[key]</code>属性,这样就实现了完善的响应式系统</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">initData</span>(<span class="params">vm</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> data = vm.$options.data;</span><br><span class="line">  data = vm._data = <span class="keyword">typeof</span> data === <span class="string">&#x27;function&#x27;</span></span><br><span class="line">    ? getData(data, vm)</span><br><span class="line">    : data || &#123;&#125;;</span><br><span class="line">  <span class="keyword">var</span> keys = <span class="built_in">Object</span>.keys(data);</span><br><span class="line">  <span class="keyword">var</span> i = keys.length;</span><br><span class="line">  <span class="keyword">while</span> (i--) &#123;</span><br><span class="line">    proxy(vm, <span class="string">&quot;_data&quot;</span>, key);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 数据代理</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">proxy</span>(<span class="params">target, sourceKey, key</span>) </span>&#123;</span><br><span class="line">  sharedPropertyDefinition.get = <span class="function"><span class="keyword">function</span> <span class="title">proxyGetter</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">this</span>[sourceKey][key]</span><br><span class="line">  &#125;;</span><br><span class="line">  sharedPropertyDefinition.set = <span class="function"><span class="keyword">function</span> <span class="title">proxySetter</span>(<span class="params">val</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">this</span>[sourceKey][key] = val;</span><br><span class="line">  &#125;;</span><br><span class="line">  <span class="comment">// vm.msg --&gt; vm._data.msg</span></span><br><span class="line">  <span class="built_in">Object</span>.defineProperty(target, key, sharedPropertyDefinition);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>普通对象的响应式系统已经构建完成了，我们接下来再看看数组对象是如何构建响应式系统的？</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> Observer = <span class="function"><span class="keyword">function</span> <span class="title">Observer</span>(<span class="params">value</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">this</span>.value = value;</span><br><span class="line">    <span class="built_in">this</span>.dep = <span class="keyword">new</span> Dep(value);</span><br><span class="line">    <span class="built_in">this</span>.vmCount = <span class="number">0</span>;</span><br><span class="line">    def(value, <span class="string">&#x27;__ob__&#x27;</span>, <span class="built_in">this</span>);</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">Array</span>.isArray(value)) &#123;</span><br><span class="line">      protoAugment(value, arrayMethods);</span><br><span class="line">      <span class="built_in">this</span>.observeArray(value);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="built_in">this</span>.walk(value);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 修改隐式原型</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">protoAugment</span>(<span class="params">target, src</span>) </span>&#123;</span><br><span class="line">    target.__proto__ = src;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>可以看到，当处理数组的时候把数组的隐式原型<code>__proto__</code>指向了<code>arrayMethods</code>,那<code>arrayMethods</code>是什么呢？其实<code>arrayMethods</code>是一个普通对象，其隐式原型指定了<code>Array.prototype</code>,这样的话,在<code>arrayMethods</code>的原型链上就有了数组的所有方法了</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> arrayProto = <span class="built_in">Array</span>.prototype;</span><br><span class="line"><span class="keyword">var</span> arrayMethods = <span class="built_in">Object</span>.create(arrayProto);</span><br><span class="line"></span><br><span class="line"> <span class="keyword">var</span> methodsToPatch = [</span><br><span class="line">    <span class="string">&#x27;push&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;pop&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;shift&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;unshift&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;splice&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;sort&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;reverse&#x27;</span></span><br><span class="line">];</span><br><span class="line"></span><br><span class="line">methodsToPatch.forEach(<span class="function"><span class="keyword">function</span> (<span class="params">method</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 基于原型链获取数组原型上的方法</span></span><br><span class="line">    <span class="keyword">var</span> original = arrayProto[method];</span><br><span class="line">    <span class="comment">// 给arrayMethods对象设置method属性  即arrayMethods[&#x27;push&#x27;] = mutator  </span></span><br><span class="line">    def(arrayMethods, method, <span class="function"><span class="keyword">function</span> <span class="title">mutator</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">      <span class="keyword">var</span> args = [], len = <span class="built_in">arguments</span>.length;</span><br><span class="line">      <span class="keyword">while</span> (len--) args[len] = <span class="built_in">arguments</span>[len];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">var</span> result = original.apply(<span class="built_in">this</span>, args);</span><br><span class="line">      <span class="keyword">var</span> ob = <span class="built_in">this</span>.__ob__;</span><br><span class="line">      <span class="keyword">var</span> inserted;</span><br><span class="line">      <span class="keyword">switch</span> (method) &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;push&#x27;</span>:</span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;unshift&#x27;</span>:</span><br><span class="line">          inserted = args;</span><br><span class="line">          <span class="keyword">break</span></span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;splice&#x27;</span>:</span><br><span class="line">          inserted = args.slice(<span class="number">2</span>);</span><br><span class="line">          <span class="keyword">break</span></span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">if</span> (inserted) &#123; ob.observeArray(inserted); &#125;</span><br><span class="line">      <span class="comment">// notify change</span></span><br><span class="line">      ob.dep.notify();</span><br><span class="line">      <span class="keyword">return</span> result</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;);</span><br></pre></td></tr></table></figure>
+<p>现在我们看看<code>arrayMethods</code>是什么样子,可以看到它是一个对象，自身有7个key,隐式原型上有所有的数组方法，这样的话，如果我们执行<code>this.list.push(2)</code>，就会沿着原型链找到<code>arrayMethods</code>对象上的<code>push</code>方法执行，即mutator，而mutator内部的逻辑有三个:<br>1.执行<code>Array.prototype</code>的<code>push</code>方法<br>2. 劫持添加的数据再次构建响应式系统<br>3. <code>ob.dep.notify()</code>触发视图更新（后面章节会讲）<br><img src="/images/1.png" width="300px" ><br>需要注意的是，对于数组，Vue只为<code>methodsToPatch</code>中的7个方法构建了响应式系统，对于其他的数组方法，Vue并没有构建响应式系统。</p>
+<p>以上，就是Vue如何构建响应式系统。</p>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2020/12/01/vue02/" title="2.  Vue如何编译模版" class="prev">PREV</a><a href="/2020/11/19/cache/" title="浏览器缓存策略" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2020 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

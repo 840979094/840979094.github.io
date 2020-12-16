@@ -1,0 +1,147 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 浏览器缓存策略 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="浏览器缓存策略 - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">浏览器缓存策略</h1><div class="post-info">2020-11-19<p class="visit"><i data-identity="2020/11/19/cache/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><h4 id="当浏览器再次访问同一个资源时，会触发浏览器的缓存策略，我们用node来观察下浏览器的缓存行为。"><a href="#当浏览器再次访问同一个资源时，会触发浏览器的缓存策略，我们用node来观察下浏览器的缓存行为。" class="headerlink" title="当浏览器再次访问同一个资源时，会触发浏览器的缓存策略，我们用node来观察下浏览器的缓存行为。"></a>当浏览器再次访问同一个资源时，会触发浏览器的缓存策略，我们用node来观察下浏览器的缓存行为。</h4><h2 id="1-目录结构如下"><a href="#1-目录结构如下" class="headerlink" title="1.目录结构如下"></a>1.目录结构如下</h2><img src="/images/directry.png" width="300px" >
+
+<h2 id="2-首页结构"><a href="#2-首页结构" class="headerlink" title="2.首页结构"></a>2.首页结构</h2><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- cache.html --&gt;</span></span><br><span class="line"><span class="meta">&lt;!DOCTYPE <span class="meta-keyword">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">lang</span>=<span class="string">&quot;en&quot;</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">charset</span>=<span class="string">&quot;UTF-8&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">name</span>=<span class="string">&quot;viewport&quot;</span> <span class="attr">content</span>=<span class="string">&quot;width=device-width, initial-scale=1.0&quot;</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">link</span> <span class="attr">rel</span>=<span class="string">&quot;icon&quot;</span> <span class="attr">href</span>=<span class="string">&quot;data:image/ico;base64,aWNv&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">title</span>&gt;</span>基于node学习浏览器缓存策略<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">&quot;/script.js&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">h1</span>&gt;</span>我是服务首页<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-搭建服务"><a href="#3-搭建服务" class="headerlink" title="3.搭建服务"></a>3.搭建服务</h2><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// app.js</span></span><br><span class="line"><span class="keyword">const</span> http = <span class="built_in">require</span>(<span class="string">&#x27;http&#x27;</span>);</span><br><span class="line"><span class="keyword">const</span> fs = <span class="built_in">require</span>(<span class="string">&#x27;fs&#x27;</span>);</span><br><span class="line">http.createServer(<span class="function">(<span class="params">request, response</span>) =&gt;</span> &#123;</span><br><span class="line">   <span class="keyword">if</span> (request.url === <span class="string">&#x27;/&#x27;</span>) &#123;</span><br><span class="line">        <span class="keyword">const</span> readStream = fs.createStream(<span class="string">&#x27;./cache.html&#x27;</span>); </span><br><span class="line">        readStream.pipe(response) </span><br><span class="line">    &#125;<span class="keyword">else</span> <span class="keyword">if</span> (<span class="regexp">/\.js$/</span>.test(request.url)) &#123;  </span><br><span class="line">        <span class="keyword">const</span> readStream = fs.createReadStream(<span class="string">&#x27;./script.js&#x27;</span>);</span><br><span class="line">        readStream.pipe(response)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-强缓存"><a href="#4-强缓存" class="headerlink" title="4.强缓存"></a>4.强缓存</h2><h4 id="触发浏览器强缓存策略需要后端配置特殊字段Expires-Cache-Control均可，并且返回状态码200"><a href="#触发浏览器强缓存策略需要后端配置特殊字段Expires-Cache-Control均可，并且返回状态码200" class="headerlink" title="触发浏览器强缓存策略需要后端配置特殊字段Expires/Cache-Control均可，并且返回状态码200"></a>触发浏览器强缓存策略需要后端配置特殊字段Expires/Cache-Control均可，并且返回状态码200</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">http.createServer(<span class="function">(<span class="params">request, response</span>) =&gt;</span> &#123;</span><br><span class="line">   <span class="keyword">if</span> (request.url === <span class="string">&#x27;/&#x27;</span>) &#123;</span><br><span class="line">        <span class="keyword">const</span> readStream = fs.createStream(<span class="string">&#x27;./cache.html&#x27;</span>); </span><br><span class="line">        readStream.pipe(response) </span><br><span class="line">    &#125;<span class="keyword">else</span> <span class="keyword">if</span> (<span class="regexp">/\.js$/</span>.test(request.url)) &#123;  </span><br><span class="line">        <span class="comment">// Expires字段设置的时间是固定的某个时间点</span></span><br><span class="line">        <span class="comment">// response.writeHead(200, &#123; </span></span><br><span class="line">        <span class="comment">//     &#x27;Expires&#x27;: new Date(&#x27;2020-12-30 12:00:00&#x27;),</span></span><br><span class="line">        <span class="comment">// &#125;);</span></span><br><span class="line">        <span class="comment">// Cache-Control字段设置的是相对于本次服务端返回的时间 单位s</span></span><br><span class="line">        response.writeHead(<span class="number">200</span>, &#123;</span><br><span class="line">           <span class="string">&#x27;Cache-Control&#x27;</span>: <span class="string">&#x27;max-age=200&#x27;</span>   </span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">const</span> readStream = fs.createReadStream(<span class="string">&#x27;./script.js&#x27;</span>);</span><br><span class="line">        readStream.pipe(response)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>第一次访问资源命中强缓存之后，浏览器就不会同样的资源发起网络请求了，浏览器会直接强制从memory(内存)/disk(硬盘)中读取资源，如下所示<br><img src="/images/image.png"></p>
+<h2 id="5-协商缓存"><a href="#5-协商缓存" class="headerlink" title="5.协商缓存"></a>5.协商缓存</h2><h4 id="触发浏览器协商缓存策略需要后端配置特殊字段Last-Modified-Etag均可，并且返回状态码304"><a href="#触发浏览器协商缓存策略需要后端配置特殊字段Last-Modified-Etag均可，并且返回状态码304" class="headerlink" title="触发浏览器协商缓存策略需要后端配置特殊字段Last-Modified/Etag均可，并且返回状态码304"></a>触发浏览器协商缓存策略需要后端配置特殊字段Last-Modified/Etag均可，并且返回状态码304</h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">http.createServer(<span class="function">(<span class="params">request, response</span>) =&gt;</span> &#123;</span><br><span class="line">   <span class="keyword">if</span> (request.url === <span class="string">&#x27;/&#x27;</span>) &#123;</span><br><span class="line">        <span class="keyword">const</span> readStream = fs.createStream(<span class="string">&#x27;./cache.html&#x27;</span>);   </span><br><span class="line">        readStream.pipe(response) </span><br><span class="line">    &#125;<span class="keyword">else</span> <span class="keyword">if</span> (<span class="regexp">/\.js$/</span>.test(request.url)) &#123;  </span><br><span class="line">        <span class="comment">// const buffer = fs.readFileSync(&#x27;./script.js&#x27;);</span></span><br><span class="line">        <span class="comment">// const fileMd5 = md5(buffer); 文件的md5值</span></span><br><span class="line">        <span class="comment">// const noneMatch = request.headers[&#x27;if-none-match&#x27;]; 来自浏览器端传递的值</span></span><br><span class="line">        <span class="comment">// 协商成功 状态码返回304</span></span><br><span class="line">        <span class="comment">// if (noneMatch === fileMd5) &#123;</span></span><br><span class="line">        <span class="comment">//     response.statusCode = 304;</span></span><br><span class="line">        <span class="comment">//     response.end();</span></span><br><span class="line">        <span class="comment">//     return;</span></span><br><span class="line">        <span class="comment">// &#125;</span></span><br><span class="line">        <span class="comment">// 协商失败 状态码返回200</span></span><br><span class="line">        <span class="comment">// response.writeHead(200, &#123;</span></span><br><span class="line">        <span class="comment">//     &#x27;Cache-Control&#x27;: &#x27;max-age=0&#x27;,</span></span><br><span class="line">        <span class="comment">//     &#x27;ETag&#x27;: fileMd5,</span></span><br><span class="line">        <span class="comment">// &#125;);</span></span><br><span class="line">        <span class="keyword">const</span> stat = fs.statSync(<span class="string">&#x27;./script.js&#x27;</span>); </span><br><span class="line">        <span class="keyword">const</span> mtime = stat.mtime.toGMTString() </span><br><span class="line">        <span class="keyword">const</span> requestMtime = request.headers[<span class="string">&#x27;if-modified-since&#x27;</span>]; </span><br><span class="line">        <span class="comment">// 协商成功  本次服务端不返回资源  让浏览器使用缓存的资源</span></span><br><span class="line">        <span class="keyword">if</span> (mtime === requestMtime) &#123;</span><br><span class="line">            response.statusCode = <span class="number">304</span>; <span class="comment">//必须返回304</span></span><br><span class="line">            response.end();</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 协商失败 状态码返回200</span></span><br><span class="line">        response.writeHead(<span class="number">200</span>, &#123;</span><br><span class="line">            <span class="string">&#x27;Last-Modified&#x27;</span>: mtime,</span><br><span class="line">            <span class="string">&#x27;Cache-Control&#x27;</span>: <span class="string">&#x27;max-age=0&#x27;</span>, <span class="comment">// 必须设置，否则下次浏览器请求会命中强缓存</span></span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">const</span> readStream = fs.createReadStream(<span class="string">&#x27;./script.js&#x27;</span>);</span><br><span class="line">        readStream.pipe(response);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>第一次访问资源命中协商缓存之后，浏览器会在下次网络请求中用特殊字段(if-modified-since/if-no-match)携带第一次访问后端时返回的响应头信息，后端在对比前后数据之后，判断资源的内容是否更改，如果更改，就协商失败，返回最新的资源给浏览器，如果没有更改，就协商成功，不返回数据给浏览器，浏览器最终使用缓存的资源</p>
+<h2 id="6-强缓存和协商缓存对比"><a href="#6-强缓存和协商缓存对比" class="headerlink" title="6.强缓存和协商缓存对比"></a>6.强缓存和协商缓存对比</h2><p>6.1 强缓存优先级比协商缓存高，因为浏览器总是倾向于请求更少的资源，命中强缓存后，浏览器都不会向后端请求资源了，所以强缓存优先级比协商缓存高<br>6.2 判断是否命中强缓存的纬度是时间，Expires是固定时间，Cache-Control是相对时间 ;<br>判断是否命中协商缓存的纬度是资源内容是否被更改，Last-Modified是用资源的修改时间，Etag是用资源的hash值</p>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2020/11/21/vue01/" title="1.  Vue如何构建响应式系统" class="prev">PREV</a><a href="/2020/11/17/hello-world/" title="Hello World" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2020 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

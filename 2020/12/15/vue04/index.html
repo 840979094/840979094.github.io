@@ -1,0 +1,188 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 4.Vue如何构建依赖关系 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="4.Vue如何构建依赖关系 - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">4.Vue如何构建依赖关系</h1><div class="post-info">2020-12-15<p class="visit"><i data-identity="2020/12/15/vue04/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>在第三节文章中，我们知道了Vue把template编译成render函数的过程。接下来Vue内部会怎么处理呢？其实接下来Vue就会执行mountComponent函数来挂载组件，如下所示,函数内部逻辑也很清晰</p>
+<ol>
+<li>触发beforeMount钩子</li>
+<li>创建watcher的求值函数updateComponent，其中_render函数是创建虚拟dom,_update函数在首次触发是创建真实dom,再次触发是比对前后的虚拟dom</li>
+<li>创建渲染watcher,其中最后一个参数true表示该watcher是渲染watcher</li>
+<li>触发mounted钩子</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">mountComponent</span>(<span class="params">vm, el,hydrating</span>) </span>&#123;</span><br><span class="line">    callHook(vm, <span class="string">&#x27;beforeMount&#x27;</span>);</span><br><span class="line">    <span class="keyword">var</span> updateComponent = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">        vm._update(vm._render(), hydrating);</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">new</span> Watcher(vm, updateComponent, noop, &#123;</span><br><span class="line">        before: <span class="function"><span class="keyword">function</span> <span class="title">before</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (vm._isMounted &amp;&amp; !vm._isDestroyed) &#123;</span><br><span class="line">                callHook(vm, <span class="string">&#x27;beforeUpdate&#x27;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;, <span class="literal">true</span> <span class="comment">/* isRenderWatcher */</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (vm.$vnode == <span class="literal">null</span>) &#123;</span><br><span class="line">        vm._isMounted = <span class="literal">true</span>;</span><br><span class="line">        callHook(vm, <span class="string">&#x27;mounted&#x27;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> vm</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接下来咱们看看Vue是如何定义Watcher这个类的，代码如下，对于Watcher类的参数需要详细说下：</p>
+<ol>
+<li>expOrFn 存储watcher的求值函数 ，对于渲染watcher，expOrFn就是updateComponent ，当然除了watcher之后，其实还会有别的两类watcher，分别为计算属性创建的lazyWatcher和为watch选项创建的自定义watcher，这两类对应的求值函数是什么后面再说。</li>
+<li>cb 存储求值函数expOrFn执行后的回调函数，对于渲染watcher，cb就是noop空函数</li>
+<li>options 存储watcher创建的配置参数，其中创建渲染watcher传入的配置对象有before钩子函数，创建自定义watcher时传入的配置对象有user属性为true，创建lazyWatcher时传入的配置对象有lazy属性为true。</li>
+<li>isRenderWatcher 表示创建的watcher是否是渲染watcher，isRenderWatcher为true表示渲染watcher，并将渲染watcher放到vm._watcher中。</li>
+</ol>
+<p>除了这些参数之外，还有别的处理，比如:</p>
+<ol>
+<li>每次创建watcher时都会把watcher放到vm._watchers</li>
+<li>在创建watcher时，基于lazy值判断是否执行求值函数，其中如果是lazyWatcher就不求值，不是lazyWatcher就求值。</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> Watcher = <span class="function"><span class="keyword">function</span> <span class="title">Watcher</span>(<span class="params"> vm, expOrFn, cb, options, isRenderWatcher</span>)</span>&#123;</span><br><span class="line">    <span class="built_in">this</span>.vm = vm;</span><br><span class="line">    <span class="keyword">if</span> (isRenderWatcher) &#123;</span><br><span class="line">      vm._watcher = <span class="built_in">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    vm._watchers.push(<span class="built_in">this</span>);</span><br><span class="line">    <span class="keyword">if</span> (options) &#123;</span><br><span class="line">      <span class="built_in">this</span>.deep = !!options.deep;</span><br><span class="line">      <span class="built_in">this</span>.user = !!options.user;</span><br><span class="line">      <span class="built_in">this</span>.lazy = !!options.lazy;</span><br><span class="line">      <span class="built_in">this</span>.sync = !!options.sync;</span><br><span class="line">      <span class="built_in">this</span>.before = options.before;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="built_in">this</span>.deep = <span class="built_in">this</span>.user = <span class="built_in">this</span>.lazy = <span class="built_in">this</span>.sync = <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">this</span>.cb = cb;</span><br><span class="line">    <span class="built_in">this</span>.id = ++uid$<span class="number">2</span>; <span class="comment">// uid for batching</span></span><br><span class="line">    <span class="built_in">this</span>.active = <span class="literal">true</span>;</span><br><span class="line">    <span class="built_in">this</span>.dirty = <span class="built_in">this</span>.lazy; <span class="comment">// for lazy watchers</span></span><br><span class="line">    <span class="built_in">this</span>.deps = [];</span><br><span class="line">    <span class="built_in">this</span>.newDeps = [];</span><br><span class="line">    <span class="built_in">this</span>.depIds = <span class="keyword">new</span> _Set();</span><br><span class="line">    <span class="built_in">this</span>.newDepIds = <span class="keyword">new</span> _Set();</span><br><span class="line">    <span class="built_in">this</span>.expression = expOrFn.toString();</span><br><span class="line">    <span class="comment">// parse expression for getter</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">typeof</span> expOrFn === <span class="string">&#x27;function&#x27;</span>) &#123;</span><br><span class="line">      <span class="built_in">this</span>.getter = expOrFn;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="built_in">this</span>.getter = parsePath(expOrFn);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">this</span>.value = <span class="built_in">this</span>.lazy ? <span class="literal">undefined</span> : <span class="built_in">this</span>.get();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>经过上面的分析，只要不是lazyWatcher就求值，那我们在初始化渲染watcher就会触发求值函数了，接下来我们看看求值函数的逻辑：<br>1.触发pushTarget，当前的watcher入targetStack栈，Dep.target指向栈顶的watcher<br>2.触发求值函数getter<br>3.触发popTarget，当前的watcher出targetStack栈，Dep.target指向栈顶的watcher<br>4.触发cleanupDeps函数，depIds/deps存储本次newDepIds/newDeps的值，之后再清空newDepIds/newDeps</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">Watcher.prototype.get = <span class="function"><span class="keyword">function</span> <span class="title">get</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    pushTarget(<span class="built_in">this</span>);</span><br><span class="line">    <span class="keyword">var</span> value;</span><br><span class="line">    <span class="keyword">var</span> vm = <span class="built_in">this</span>.vm;</span><br><span class="line">    value = <span class="built_in">this</span>.getter.call(vm, vm);</span><br><span class="line">    popTarget();</span><br><span class="line">    <span class="built_in">this</span>.cleanupDeps();</span><br><span class="line">    <span class="keyword">return</span> value</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Dep.target = <span class="literal">null</span>;</span><br><span class="line"><span class="keyword">var</span> targetStack = [];</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">pushTarget</span>(<span class="params">target</span>) </span>&#123;</span><br><span class="line">    targetStack.push(target);</span><br><span class="line">    Dep.target = target;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">popTarget</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    targetStack.pop();</span><br><span class="line">    Dep.target = targetStack[targetStack.length - <span class="number">1</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Watcher.prototype.cleanupDeps = <span class="function"><span class="keyword">function</span> <span class="title">cleanupDeps</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> i = <span class="built_in">this</span>.deps.length;</span><br><span class="line">    <span class="keyword">while</span> (i--) &#123;</span><br><span class="line">      <span class="keyword">var</span> dep = <span class="built_in">this</span>.deps[i];</span><br><span class="line">      <span class="keyword">if</span> (!<span class="built_in">this</span>.newDepIds.has(dep.id)) &#123;</span><br><span class="line">        dep.removeSub(<span class="built_in">this</span>);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">var</span> tmp = <span class="built_in">this</span>.depIds;</span><br><span class="line">    <span class="built_in">this</span>.depIds = <span class="built_in">this</span>.newDepIds;</span><br><span class="line">    <span class="built_in">this</span>.newDepIds = tmp;</span><br><span class="line">    <span class="built_in">this</span>.newDepIds.clear();</span><br><span class="line">    tmp = <span class="built_in">this</span>.deps;</span><br><span class="line">    <span class="built_in">this</span>.deps = <span class="built_in">this</span>.newDeps;</span><br><span class="line">    <span class="built_in">this</span>.newDeps = tmp;</span><br><span class="line">    <span class="built_in">this</span>.newDeps.length = <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>对于渲染watcher来说，getter就是updateComponent函数，而updateComponent函数的逻辑也很清晰:</p>
+<ol>
+<li>触发_render函数</li>
+<li>触发_update函数<br>可以看到_render函数内部就是执行render，而这个render函数就是基于template模版创建的render函数，值的注意的是，执行render函数时，会将内部this指向vm._renderProxy，vm._renderProxy对象经过处理指向组件实例vm。</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> updateComponent = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    vm._update(vm._render(), hydrating);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Vue.prototype._render = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 此处省略若干代码</span></span><br><span class="line">    <span class="keyword">var</span> vm = <span class="built_in">this</span>;</span><br><span class="line">    <span class="keyword">var</span> ref = vm.$options;</span><br><span class="line">    <span class="keyword">var</span> render = ref.render;</span><br><span class="line">    <span class="keyword">var</span> vnode = render.call(vm._renderProxy, vm.$createElement);</span><br><span class="line">    <span class="keyword">return</span> vnode</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>假定template模版如下，则生成的render函数如下图所示：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">app</span> <span class="attr">class</span>=<span class="string">&quot;heaven&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">p</span>&gt;</span>&#123;&#123;msg&#125;&#125;<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">button</span> @<span class="attr">click</span>=<span class="string">&#x27;handleClick&#x27;</span>&gt;</span>按钮<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<img src="/images/render.png"  >
+
+<p>当执行render函数时，有个with语句，执行with内部逻辑时，总是从this中取值，即取msg的值时，等价取vm.msg，因为我们之前做了数据代理的原因， 所以取vm.msg时，等价取vm._data.msg ,此时就触发了msg的get钩子函数。这时候get函数内部就会构建属性msg和watcher的依赖关系，我们看看get函数内部是怎么做的？</p>
+<ol>
+<li>判断Dep.target是否存在，之所以要有这个判断，是因为我们只要在渲染watcher/lazyWatcher/自定义watcher的求值函数触发时，才触发dep.depend函数</li>
+<li>判断childOb是否存在，存在就执行childOb.dep.depend，childOb是什么？为什么要执行childOb.dep.depend，我们稍等再说。</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineReactive$$1</span>(<span class="params"> obj, key, val, customSetter,shallow</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> dep = <span class="keyword">new</span> Dep(key);</span><br><span class="line">    <span class="keyword">var</span> childOb = !shallow &amp;&amp; observe(val);</span><br><span class="line">    <span class="built_in">Object</span>.defineProperty(obj, key, &#123;</span><br><span class="line">        get: <span class="function"><span class="keyword">function</span> <span class="title">reactiveGetter</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (Dep.target) &#123;</span><br><span class="line">                dep.depend();</span><br><span class="line">                <span class="keyword">if</span> (childOb) &#123;</span><br><span class="line">                    childOb.dep.depend();</span><br><span class="line">                    <span class="keyword">if</span> (<span class="built_in">Array</span>.isArray(value)) &#123;</span><br><span class="line">                        dependArray(value);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> value</span><br><span class="line">        &#125;,</span><br><span class="line">        set: <span class="function"><span class="keyword">function</span> <span class="title">reactiveSetter</span>(<span class="params">newVal</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (newVal === value || (newVal !== newVal &amp;&amp; value !== value)) &#123;</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">            &#125;</span><br><span class="line">            val = newVal;</span><br><span class="line">            childOb = !shallow &amp;&amp; observe(newVal);</span><br><span class="line">            dep.notify();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>经过上面的分析，我们知道Dep.target存在的话就要执行dep.depend方法，我们看看这个函数内部做了什么？</p>
+<ol>
+<li>也是判断是否Dep.target是否存在，值得注意的是，此时Dep.target指向渲染watcher，并且执行渲染watcher的addDep方法</li>
+<li>watcher的addDep方法内部用到两个if判断，第一个判断是为了防止在本次求值过程中重复把watcher放到dep对象中，第二个if判断是为了防止在不同的求值时刻（用户更新视图会再次求值，再次求值会再次走到addDep的逻辑中）重复把watcher放到dep对象中。</li>
+<li>最终会触发 dep.addSub方法，把watcher放到depd对象的subs中。<br>至此属性msg的dep对象中的subs数组收集到了渲染watcher，这就是某个属性的依赖收集过程。</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> Dep = <span class="function"><span class="keyword">function</span> <span class="title">Dep</span>(<span class="params">key</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">this</span>.id = uid++;</span><br><span class="line">    <span class="built_in">this</span>.subs = [];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Dep.prototype.addSub = <span class="function"><span class="keyword">function</span> <span class="title">addSub</span>(<span class="params">sub</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">this</span>.subs.push(sub);</span><br><span class="line">&#125;;</span><br><span class="line">Dep.prototype.depend = <span class="function"><span class="keyword">function</span> <span class="title">depend</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (Dep.target) &#123;</span><br><span class="line">        Dep.target.addDep(<span class="built_in">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Watcher.prototype.addDep = <span class="function"><span class="keyword">function</span> <span class="title">addDep</span>(<span class="params">dep</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> id = dep.id;</span><br><span class="line">    <span class="keyword">if</span> (!<span class="built_in">this</span>.newDepIds.has(id)) &#123;</span><br><span class="line">        <span class="built_in">this</span>.newDepIds.add(id);</span><br><span class="line">        <span class="built_in">this</span>.newDeps.push(dep);</span><br><span class="line">        <span class="keyword">if</span> (!<span class="built_in">this</span>.depIds.has(id)) &#123;</span><br><span class="line">            dep.addSub(<span class="built_in">this</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+
+
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2020/12/11/express01/" title="实现express的洋葱模型" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2020 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

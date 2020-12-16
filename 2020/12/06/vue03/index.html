@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 3. Vue生成ast树后，做了肾么事？ · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="3. Vue生成ast树后，做了肾么事？ - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">3. Vue生成ast树后，做了肾么事？</h1><div class="post-info">2020-12-06<p class="visit"><i data-identity="2020/12/06/vue03/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>Vue生成了ast语法树之后，还对这个树结构进行了静态标记，之所以给ast树打上是否是静态的标记，是因为在后面diff算法的时候，直接跳过静态的节点，可以节省diff的开销。下面我们看看是怎么给节点打静态标记的吧</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> ast = parse(template.trim(), options);</span><br><span class="line"><span class="keyword">if</span> (options.optimize !== <span class="literal">false</span>) &#123;</span><br><span class="line">    optimize(ast, options);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">optimize</span>(<span class="params">root, options</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!root) &#123; <span class="keyword">return</span> &#125;</span><br><span class="line">    isStaticKey = genStaticKeysCached(options.staticKeys || <span class="string">&#x27;&#x27;</span>);</span><br><span class="line">    isPlatformReservedTag = options.isReservedTag || no;</span><br><span class="line">    <span class="comment">// 给节点打上是否是静态节点的标记</span></span><br><span class="line">    markStatic$<span class="number">1</span>(root);</span><br><span class="line">    <span class="comment">// 给节点打上是否是静态根节点的标记</span></span><br><span class="line">    markStaticRoots(root, <span class="literal">false</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的代码中，markStatic$1函数是给节点打上是否是静态节点的标记，markStaticRoots函数是给节点打上是否是静态根节点的标记，我们先看看markStatic$1函数内部的逻辑，其实核心isStatic函数，这个函数是判断节点是否是静态节点。判断的逻辑大致如下</p>
+<ol>
+<li>如果是插值文本 那就不是静态节点</li>
+<li>如果是普通文本 那就是静态节点</li>
+<li>有跳过编译的指令pre 那就是静态节点</li>
+<li>没有属性绑定&amp;有if for&amp;不是Vue内置标签等 那就是静态节点</li>
+</ol>
+<p>在经过上面判断出这个节点是否是静态节点，如果是那就给这个节点在加上<code>static:true</code>标记，当然这还没结束，接着还会在遍历这个节点的子节点们，判断子节点是否是静态节点，一旦某个子节点不是静态节点，那就给这个节点<br>打上<code>static:false</code>标记</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">function</span> <span class="title">markStatic$1</span>(<span class="params">node</span>) </span>&#123;</span><br><span class="line">    node.static = isStatic(node);</span><br><span class="line">   <span class="keyword">if</span> (node.type === <span class="number">1</span>) &#123;</span><br><span class="line">      <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>, l = node.children.length; i &lt; l; i++) &#123;</span><br><span class="line">        <span class="keyword">var</span> child = node.children[i];</span><br><span class="line">        markStatic$<span class="number">1</span>(child);</span><br><span class="line">        <span class="keyword">if</span> (!child.static) &#123;</span><br><span class="line">          node.static = <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">isStatic</span>(<span class="params">node</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (node.type === <span class="number">2</span>) &#123; <span class="comment">// expression</span></span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (node.type === <span class="number">3</span>) &#123; <span class="comment">// text</span></span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> !!(node.pre || (</span><br><span class="line">      !node.hasBindings &amp;&amp; <span class="comment">// no dynamic bindings</span></span><br><span class="line">      !node.if &amp;&amp; !node.for &amp;&amp; <span class="comment">// not v-if or v-for or v-else</span></span><br><span class="line">      !isBuiltInTag(node.tag) &amp;&amp; <span class="comment">// not a built-in</span></span><br><span class="line">      isPlatformReservedTag(node.tag) &amp;&amp; <span class="comment">// not a component</span></span><br><span class="line">      !isDirectChildOfTemplateFor(node) &amp;&amp;</span><br><span class="line">      <span class="built_in">Object</span>.keys(node).every(isStaticKey)</span><br><span class="line">    ))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下面再看看markStaticRoots函数的逻辑,判断节点是否是静态根节点的逻辑大致如下</p>
+<ol>
+<li>如果是该节点是静态节点，并且这个节点的子节点长度大于1，那这个节点就是静态根节点</li>
+<li>不满足上述条件，则这个节点就不是静态根节点<br>在经过上面判断出这个节点是否是静态根节点，如果是那就给这个节点在加上<code>staticRoot:true</code>标记，当然这还没结束，接着还会在遍历这个节点的子节点们，判断子节点是否是静态根节点，最后给子节点们打上staticRoot标记</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">markStaticRoots</span>(<span class="params">node, isInFor</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (node.type === <span class="number">1</span>) &#123;</span><br><span class="line">      <span class="comment">// For a node to qualify as a static root, it should have children that</span></span><br><span class="line">      <span class="comment">// are not just static text. Otherwise the cost of hoisting out will</span></span><br><span class="line">      <span class="comment">// outweigh the benefits and it&#x27;s better off to just always render it fresh.</span></span><br><span class="line">      <span class="keyword">if</span> (node.static &amp;&amp; node.children.length &amp;&amp; !(</span><br><span class="line">        node.children.length === <span class="number">1</span> &amp;&amp;</span><br><span class="line">        node.children[<span class="number">0</span>].type === <span class="number">3</span></span><br><span class="line">      )) &#123;</span><br><span class="line">        node.staticRoot = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        node.staticRoot = <span class="literal">false</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">if</span> (node.children) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>, l = node.children.length; i &lt; l; i++) &#123;</span><br><span class="line">          markStaticRoots(node.children[i], isInFor || !!node.for);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最终Vue就处理好了ast树，接着会基于ast树生成代码，,这里使用到了generate函数，generate这个函数内部的逻辑大致是:</p>
+<ol>
+<li>genElement函数内部创建节点对应的代码存到data中</li>
+<li>genChildren函数内部创建节点的子节点对应的代码存到children中</li>
+<li>最终基于data和children拼接成最终的code，其中如果节点有if for once等指令，会转换成特殊的代码</li>
+<li>如果是静态根节点，就生成代码并存到staticRenderFns中<br>值得注意的是，我们在下面代码中可以得到结论：v-for的优先级比v-if的优先级<br>因为generate函数内部是先处理el.for，再处理el.if的。</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> ast = parse(template.trim(), options);</span><br><span class="line"><span class="keyword">if</span> (options.optimize !== <span class="literal">false</span>) &#123;</span><br><span class="line">    optimize(ast, options);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">var</span> code = generate(ast, options);</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">generate</span>(<span class="params">ast, options </span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> state = <span class="keyword">new</span> CodegenState(options);</span><br><span class="line">    <span class="keyword">var</span> code = ast ? genElement(ast, state) : <span class="string">&#x27;_c(&quot;div&quot;)&#x27;</span>;</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">        render: (<span class="string">&quot;with(this)&#123;return &quot;</span> + code + <span class="string">&quot;&#125;&quot;</span>),</span><br><span class="line">        staticRenderFns: state.staticRenderFns</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">genElement</span>(<span class="params">el, state</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (el.parent) &#123;</span><br><span class="line">        el.pre = el.pre || el.parent.pre;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (el.staticRoot &amp;&amp; !el.staticProcessed) &#123;</span><br><span class="line">        <span class="keyword">return</span> genStatic(el, state)</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (el.once &amp;&amp; !el.onceProcessed) &#123;</span><br><span class="line">        <span class="keyword">return</span> genOnce(el, state)</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (el.for &amp;&amp; !el.forProcessed) &#123;</span><br><span class="line">        <span class="keyword">return</span> genFor(el, state)</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (el.if &amp;&amp; !el.ifProcessed) &#123;</span><br><span class="line">        <span class="keyword">return</span> genIf(el, state)</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (el.tag === <span class="string">&#x27;template&#x27;</span> &amp;&amp; !el.slotTarget &amp;&amp; !state.pre) &#123;</span><br><span class="line">        <span class="keyword">return</span> genChildren(el, state) || <span class="string">&#x27;void 0&#x27;</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (el.tag === <span class="string">&#x27;slot&#x27;</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> genSlot(el, state)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// component or element</span></span><br><span class="line">        <span class="keyword">var</span> code;</span><br><span class="line">        <span class="keyword">if</span> (el.component) &#123;</span><br><span class="line">        code = genComponent(el.component, el, state);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">var</span> data;</span><br><span class="line">        <span class="keyword">if</span> (!el.plain || (el.pre &amp;&amp; state.maybeComponent(el))) &#123;</span><br><span class="line">            data = genData$<span class="number">2</span>(el, state);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">var</span> children = el.inlineTemplate ? <span class="literal">null</span> : genChildren(el, state, <span class="literal">true</span>);</span><br><span class="line">            code = <span class="string">&quot;_c(&#x27;&quot;</span> + (el.tag) + <span class="string">&quot;&#x27;&quot;</span> + (data ? (<span class="string">&quot;,&quot;</span> + data) : <span class="string">&#x27;&#x27;</span>) + (children ? (<span class="string">&quot;,&quot;</span> + children) : <span class="string">&#x27;&#x27;</span>) + <span class="string">&quot;)&quot;</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// module transforms</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; state.transforms.length; i++) &#123;</span><br><span class="line">            code = state.transforms[i](el, code);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> code</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最终输出的code为下图，其中render为可执行的字符串，staticRenderFns为静态节点字符串</p>
+<img src="/images/code.png" >
+
+<p>生成code之后，接下来的处理是在compileToFunctions函数中,大致逻辑是：</p>
+<ol>
+<li>定义cache缓存对象</li>
+<li>compile函数返回的是code对象,即compiled-&gt;code对象</li>
+<li>基于render/staticRenderFns创建函数</li>
+<li>返回res对象，并将key-&gt;res存到缓存对象中,这个是vue的优化策略，当第二次再次编译同样的模版时，会直接取出render/staticRenderFns，不会重复编译出render/staticRenderFns，这样在多次使用组件时，就可以极大的节省浏览器开销</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">function</span> <span class="title">compileToFunctions</span>(<span class="params"> template, options, vm</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> cache = <span class="built_in">Object</span>.create(<span class="literal">null</span>);</span><br><span class="line">    <span class="comment">//  此时省略很多代码</span></span><br><span class="line">    <span class="keyword">if</span> (cache[key]) &#123;</span><br><span class="line">        <span class="keyword">return</span> cache[key]</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 编译模版</span></span><br><span class="line">    <span class="keyword">var</span> compiled = compile(template, options);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> res = &#123;&#125;;</span><br><span class="line">    <span class="keyword">var</span> fnGenErrors = [];</span><br><span class="line">    res.render = createFunction(compiled.render, fnGenErrors);</span><br><span class="line">    res.staticRenderFns = compiled.staticRenderFns.map(<span class="function"><span class="keyword">function</span> (<span class="params">code</span>) </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> createFunction(code, fnGenErrors)</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> (cache[key] = res)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createFunction</span>(<span class="params">code, errors</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Function</span>(code)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>至此Vue编译模版终于结束了，过程是从html字符串-&gt;ast语法树-&gt;code对象-&gt;render函数。其实还有一个很重要的问题，就是Vue在模版编译的过程中，函数嵌套很严重，Vue内部为什么嵌套这么多层呢？其实</p>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2020/12/11/express01/" title="实现express的洋葱模型" class="prev">PREV</a><a href="/2020/12/03/js%E9%AA%9A%E6%93%8D%E4%BD%9C/" title="js小技巧" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2020 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>
