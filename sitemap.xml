@@ -2,51 +2,72 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://example.com/2020/12/20/vue07/</loc>
+    
+    <lastmod>2020-12-24</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://example.com/2020/12/15/vue04/</loc>
     
-    <lastmod>2020-12-15</lastmod>
+    <lastmod>2020-12-22</lastmod>
     
   </url>
   
   <url>
-    <loc>http://example.com/2020/12/01/vue02/</loc>
+    <loc>http://example.com/2020/12/19/vue06/</loc>
     
-    <lastmod>2020-12-15</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>http://example.com/2020/11/19/cache/</loc>
-    
-    <lastmod>2020-12-15</lastmod>
+    <lastmod>2020-12-22</lastmod>
     
   </url>
   
   <url>
-    <loc>http://example.com/2020/12/11/express01/</loc>
+    <loc>http://example.com/2020/12/17/vue05/</loc>
     
-    <lastmod>2020-12-15</lastmod>
+    <lastmod>2020-12-22</lastmod>
     
   </url>
   
   <url>
     <loc>http://example.com/2020/12/06/vue03/</loc>
     
-    <lastmod>2020-12-08</lastmod>
+    <lastmod>2020-12-21</lastmod>
     
   </url>
   
   <url>
-    <loc>http://example.com/2020/12/03/js%E9%AA%9A%E6%93%8D%E4%BD%9C/</loc>
+    <loc>http://example.com/2020/12/01/vue02/</loc>
     
-    <lastmod>2020-12-03</lastmod>
+    <lastmod>2020-12-19</lastmod>
     
   </url>
   
   <url>
     <loc>http://example.com/2020/11/21/vue01/</loc>
     
-    <lastmod>2020-12-02</lastmod>
+    <lastmod>2020-12-17</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://example.com/2020/12/03/js%E9%AA%9A%E6%93%8D%E4%BD%9C/</loc>
+    
+    <lastmod>2020-12-17</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://example.com/2020/12/11/express01/</loc>
+    
+    <lastmod>2020-12-17</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://example.com/2020/11/19/cache/</loc>
+    
+    <lastmod>2020-12-16</lastmod>
     
   </url>
   
@@ -60,12 +81,68 @@
 
   <url>
     <loc>http://example.com/</loc>
-    <lastmod>2020-12-16</lastmod>
+    <lastmod>2020-12-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
   
+  <url>
+    <loc>http://example.com/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/tags/Node/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/tags/JS/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/tags/Vue/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
 
+  
+  <url>
+    <loc>http://example.com/categories/%E6%B5%8F%E8%A7%88%E5%99%A8/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/categories/Node/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/categories/JS/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/categories/Vue/</loc>
+    <lastmod>2020-12-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
   
 </urlset>

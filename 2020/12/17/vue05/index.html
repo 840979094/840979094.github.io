@@ -1,0 +1,208 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 5. Vue的更新策略 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="5. Vue的更新策略 - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">5. Vue的更新策略</h1><div class="post-info">2020-12-17<p class="visit"><i data-identity="2020/12/17/vue05/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>在上篇文章中，我们已经讲到Vue内部如何进行依赖收集的，咱们先假定模版如下：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">&#x27;app&#x27;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">button</span> @<span class="attr">click</span>=<span class="string">&#x27;handleClick&#x27;</span>&gt;</span>按钮<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">div</span> <span class="attr">v-for</span>=<span class="string">&#x27;item in list&#x27;</span>&gt;</span>&#123;&#123;item&#125;&#125; <span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">p</span>&gt;</span>&#123;&#123;obj&#125;&#125;<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">p</span>&gt;</span>&#123;&#123;splitMsg&#125;&#125;<span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> vm = <span class="keyword">new</span> Vue(&#123;</span><br><span class="line">  el: <span class="string">&quot;#app&quot;</span>,</span><br><span class="line">  data: &#123;</span><br><span class="line">    msg: <span class="string">&#x27;我是数据&#x27;</span>,</span><br><span class="line">    list: [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>],</span><br><span class="line">    obj: &#123;</span><br><span class="line">      name: <span class="string">&#x27;heaven&#x27;</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  computed: &#123;</span><br><span class="line">    <span class="function"><span class="title">splitMsg</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">this</span>.msg.split(<span class="string">&#x27;&#x27;</span>)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  methods:&#123;</span><br><span class="line">    <span class="function"><span class="title">handleClick</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">      <span class="built_in">this</span>.msg = <span class="string">&#x27;我是修改的数据&#x27;</span>;</span><br><span class="line">      <span class="built_in">this</span>.lish.push(<span class="number">4</span>)</span><br><span class="line">      <span class="built_in">this</span>.obj.name = <span class="string">&#x27;啦啦啦&#x27;</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<img src="/images/render01.png" >
+
+<p>最终模版转成的render函数如上所示，依赖收集的结果如下:</p>
+<ol>
+<li>list对应的订阅器对象dep中<code>subs=[渲染watcher]</code></li>
+<li>obj对应的订阅器对象dep中<code>subs=[渲染watcher]</code></li>
+<li>splitMsg是计算属性，所以msg对应的订阅器对象dep中<code>subs=[lazyWatcher,渲染watcher]</code></li>
+<li>name对应的订阅器对象dep中<code>subs=[渲染watcher]</code><br>并且因为<code>childOb.dep.depend</code>的原因，obj和list这俩引用数据的dep订阅器对象的sub也会存储watcher，并且<code>subs=[渲染watcher]</code></li>
+</ol>
+<h2 id="渲染watcher的依赖图"><a href="#渲染watcher的依赖图" class="headerlink" title="渲染watcher的依赖图"></a>渲染watcher的依赖图</h2><p>最终渲染watcher收集的dep如下</p>
+<img src="/images/renderwatcher.png" >
+
+<h2 id="lazyWatcher的依赖图"><a href="#lazyWatcher的依赖图" class="headerlink" title="lazyWatcher的依赖图"></a>lazyWatcher的依赖图</h2><p>最终lazyWatcher收集的dep如下<br><img src="/images/lazywatcher.png" ></p>
+<h2 id="视图更新"><a href="#视图更新" class="headerlink" title="视图更新"></a>视图更新</h2><p>我们知道Vue内部为普通对象/数组构建了响应式系统，想要视图更新共有两种：</p>
+<ol>
+<li>给对象属性赋值，触发set钩子</li>
+<li>执行数组变异方法，触发mutator函数</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> vm = <span class="keyword">new</span> Vue(&#123;</span><br><span class="line">  methods:&#123;</span><br><span class="line">    <span class="function"><span class="title">handleClick</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">      <span class="built_in">this</span>.msg = <span class="string">&#x27;我是修改的数据&#x27;</span>;</span><br><span class="line">      <span class="built_in">this</span>.lish.push(<span class="number">4</span>)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改对象属性"><a href="#修改对象属性" class="headerlink" title="修改对象属性"></a>修改对象属性</h3><p>上面代码<code>this.msg = &#39;我是修改的数据&#39;</code>会触发下面的set钩子函数，<code>dep.notify()</code>就是触发视图更新的关键代码，<br>视图更新的逻辑如下：</p>
+<ol>
+<li>取出subs数组中所有的watcher，并触发watcher的update方法。对于msg来说，subs数组的watcher只有一个渲染watcher</li>
+<li>update内部是基于watcher的种类做不同的处理，对于渲染watcher直接放到queueWatcher函数中处理，对于lazyWatcher，把dirty置true，表示lazyWatcher并没有求值。queueWatcher函数内部拿到watcher会怎么处理，我们稍等再说，值得注意的是，此时视图还没有更新呢。<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">set: <span class="function"><span class="keyword">function</span> <span class="title">reactiveSetter</span>(<span class="params">newVal</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (newVal === value || (newVal !== newVal &amp;&amp; value !== value)) &#123;</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">  &#125;</span><br><span class="line">  val = newVal;</span><br><span class="line">  childOb = !shallow &amp;&amp; observe(newVal);</span><br><span class="line">  dep.notify();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Dep.prototype.notify = <span class="function"><span class="keyword">function</span> <span class="title">notify</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> subs = <span class="built_in">this</span>.subs.slice();</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>, l = subs.length; i &lt; l; i++) &#123;</span><br><span class="line">    subs[i].update();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Watcher.prototype.update = <span class="function"><span class="keyword">function</span> <span class="title">update</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">this</span>.lazy) &#123;</span><br><span class="line">    <span class="built_in">this</span>.dirty = <span class="literal">true</span>;</span><br><span class="line">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">this</span>.sync) &#123;</span><br><span class="line">    <span class="built_in">this</span>.run();</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    queueWatcher(<span class="built_in">this</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="数组变异方法"><a href="#数组变异方法" class="headerlink" title="数组变异方法"></a>数组变异方法</h3>接下来我们执行数组的变异方法<code>this.lish.push(4)</code>来触发mutator函数，大致逻辑是：</li>
+<li><code>original.apply</code>执行数组原型的push方法</li>
+<li>对push/unshift/splice这三个方法，对添加的到list数组的新数据进行观测</li>
+<li><code>ob.dep.notify()</code>触发视图更新，值得注意的是ob指向<code>this.__ob__</code>，mutator函数内部this指向list数组，在观测list数组时，就已经通过<code>def(value, &#39;__ob__&#39;, this)</code>给list数组添加__ob__属性了。所以<code>this.__ob__</code>指向的就是list数组对应的观测对象，一旦执行<code>ob.dep.notify()</code>，就会取出list数组对应的dep订阅器对象里subs所有的watcher，对于list数组来说，subs数组只有一个渲染watcher，接着再执行watcher.update，最后是把渲染watcher放到queueWatcher函数中处理。<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">methodsToPatch.forEach(<span class="function"><span class="keyword">function</span> (<span class="params">method</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> original = arrayProto[method];</span><br><span class="line">  def(arrayMethods, method, <span class="function"><span class="keyword">function</span> <span class="title">mutator</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> args = [], len = <span class="built_in">arguments</span>.length;</span><br><span class="line">    <span class="keyword">while</span> (len--) args[len] = <span class="built_in">arguments</span>[len];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> result = original.apply(<span class="built_in">this</span>, args);</span><br><span class="line">    <span class="keyword">var</span> ob = <span class="built_in">this</span>.__ob__;</span><br><span class="line">    <span class="keyword">var</span> inserted;</span><br><span class="line">    <span class="keyword">switch</span> (method) &#123;</span><br><span class="line">      <span class="keyword">case</span> <span class="string">&#x27;push&#x27;</span>:</span><br><span class="line">      <span class="keyword">case</span> <span class="string">&#x27;unshift&#x27;</span>:</span><br><span class="line">        inserted = args;</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line">      <span class="keyword">case</span> <span class="string">&#x27;splice&#x27;</span>:</span><br><span class="line">        inserted = args.slice(<span class="number">2</span>);</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (inserted) &#123; ob.observeArray(inserted); &#125;</span><br><span class="line">    ob.dep.notify();</span><br><span class="line">    <span class="keyword">return</span> result</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h3 id="vm-set"><a href="#vm-set" class="headerlink" title="vm.$set"></a>vm.$set</h3><p>如果要让视图中的obj更新，只要<code>this.obj.name=&#39;啦啦啦&#39;</code>即可，其更新视图的流程和上面分析的<code>this.msg=&#39;我是修改的数据&#39;</code>一致，当然我们修改的obj的name属性，因为在构建响应式系统时，已经给name属性添加get和set，自然可以触发视图更新了，假定我们<code>this.obj.age=28</code>这样是否可以触发视图更新呢，根据Vue的使用经验，其实这样是不会触发视图更新的，<br>如果就是希望<code>this.obj.age=28</code>来触发视图更新，可以使用<code>vm.$set</code>这个API来触发视图更新，如下所示：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> vm = <span class="keyword">new</span> Vue(&#123;</span><br><span class="line">  methods:&#123;</span><br><span class="line">    <span class="function"><span class="title">handleClick</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">      <span class="built_in">this</span>.obj.name = <span class="string">&#x27;啦啦啦&#x27;</span> <span class="comment">//可以触发视图更新，因为构建响应式系统时已经添加set</span></span><br><span class="line">      <span class="built_in">this</span>.obj.age = <span class="number">28</span> <span class="comment">//不可以触发视图更新，因为构建响应式系统时，并没有添加set</span></span><br><span class="line">      vm.$set(<span class="built_in">this</span>.obj,<span class="string">&#x27;age&#x27;</span>,<span class="number">28</span>)  </span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>接下来，我们看看<code>vm.$set</code>是如何实现的？</p>
+<ol>
+<li>取出ob，这里ob指向<code>this.obj</code>这个对象的Observe实例</li>
+<li>使用defineReactive$$1函数给<code>ob.value</code>的age属性构建响应式系统，这里<code>ob.value</code>指向<code>this.obj</code></li>
+<li><code>ob.dep.notify()</code>触发更新，也是把渲染watcher放到queueWatcher函数中处理，因为<code>childOb.dep.depend</code>的原因，所以这里<code>ob.dep</code>的subs中已经存储了渲染watcher。<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Vue.prototype.$set = <span class="function"><span class="keyword">function</span> <span class="title">set</span>(<span class="params">target, key, val</span>) </span>&#123;</span><br><span class="line">  <span class="comment">// 此处省略若干代码</span></span><br><span class="line">  <span class="keyword">var</span> ob = (target).__ob__;</span><br><span class="line">  defineReactive$$1(ob.value, key, val);</span><br><span class="line">  ob.dep.notify();</span><br><span class="line">  <span class="keyword">return</span> val</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h2 id="异步更新"><a href="#异步更新" class="headerlink" title="异步更新"></a>异步更新</h2><h3 id="queueWatcher"><a href="#queueWatcher" class="headerlink" title="queueWatcher"></a>queueWatcher</h3><p>上面我们讨论了三种触发视图更新的方式，不过我们只讨论到把watcher交给queueWatcher中处理，在这之前其实视图并没有更新，也就是说真正视图更新的逻辑是放在queueWatcher去做的，我们看看queueWatcher内部的代码逻辑：</p>
+<ol>
+<li>has存储不同的watcher.id</li>
+<li>定义开关flushing，只要<code>flushing=false</code>那就把watcher放到queue数组中,其实flushSchedulerQueue没执行，flushing就一直为false</li>
+<li>定义开关waiting，只要<code>waiting=false</code>那就触发<code>nextTick(flushSchedulerQueue)</code>,并立马把waiting置true，防止再次触发<code>nextTick(flushSchedulerQueue)</code><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> has = &#123;&#125;;</span><br><span class="line"><span class="keyword">var</span> queue = [];</span><br><span class="line"><span class="keyword">var</span> waiting = <span class="literal">false</span>;</span><br><span class="line"><span class="keyword">var</span> flushing = <span class="literal">false</span>;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">queueWatcher</span>(<span class="params">watcher</span>) </span>&#123;</span><br><span class="line">  <span class="comment">// 此处省略若干代码</span></span><br><span class="line">  <span class="keyword">var</span> id = watcher.id;</span><br><span class="line">  <span class="keyword">if</span> (has[id] == <span class="literal">null</span>) &#123;</span><br><span class="line">    has[id] = <span class="literal">true</span>;</span><br><span class="line">    <span class="keyword">if</span> (!flushing) &#123;</span><br><span class="line">      queue.push(watcher);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// queue the flush</span></span><br><span class="line">    <span class="keyword">if</span> (!waiting) &#123;</span><br><span class="line">      waiting = <span class="literal">true</span>;</span><br><span class="line">      nextTick(flushSchedulerQueue);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ol>
+<h3 id="nextTick"><a href="#nextTick" class="headerlink" title="nextTick"></a>nextTick</h3><p>nextTick的作用是收集本次传入的cb回调函数，并立马触发timerFunc，处理方式如下：</p>
+<ol>
+<li>callbacks存放传入的cb回调函数，例如上面的<code>nextTick(flushSchedulerQueue)</code>就是把flushSchedulerQueue放入到callbacks中，其实当用户手动触发<code>this.$nextTick(回调函数)</code>，也会将回调函数放入到callbacks中</li>
+<li>定义开关pending，只要<code>pending=false</code>那就触发<code>timerFunc()</code>,并立马把pending置true，防止再次触发<code>timerFunc()</code><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> callbacks = [];</span><br><span class="line"><span class="keyword">var</span> pending = <span class="literal">false</span>;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">nextTick</span>(<span class="params">cb, ctx</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> _resolve;</span><br><span class="line">  callbacks.push(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (cb) &#123;</span><br><span class="line">       cb.call(ctx);</span><br><span class="line">    &#125; </span><br><span class="line">  &#125;);</span><br><span class="line">  <span class="keyword">if</span> (!pending) &#123;</span><br><span class="line">    pending = <span class="literal">true</span>;</span><br><span class="line">    timerFunc();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 手动触发this.$nextTick(回调函数)的逻辑</span></span><br><span class="line">Vue.prototype.$nextTick = <span class="function"><span class="keyword">function</span> (<span class="params">fn</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> nextTick(fn, <span class="built_in">this</span>)</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h3 id="timerFunc"><a href="#timerFunc" class="headerlink" title="timerFunc"></a>timerFunc</h3><p>timerFunc的作用异步处理<code>flushCallbacks</code>，其中<code>flushCallbacks</code>存放的全是<code>nextTick函数</code>中<code>callbacks</code>收集的cb回调函数，例如<code>flushSchedulerQueue，自定义回调</code>等</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="keyword">typeof</span> <span class="built_in">Promise</span> !== <span class="string">&#x27;undefined&#x27;</span> &amp;&amp; isNative(<span class="built_in">Promise</span>)) &#123;</span><br><span class="line">  <span class="comment">// 此处省略若干代码</span></span><br><span class="line">  <span class="keyword">var</span> p = <span class="built_in">Promise</span>.resolve();</span><br><span class="line">  timerFunc = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    p.then(flushCallbacks);</span><br><span class="line">  &#125;;    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">flushCallbacks</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  pending = <span class="literal">false</span>;</span><br><span class="line">  <span class="keyword">var</span> copies = callbacks.slice(<span class="number">0</span>);</span><br><span class="line">  callbacks.length = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; copies.length; i++) &#123;</span><br><span class="line">    copies[i]();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="flushSchedulerQueue"><a href="#flushSchedulerQueue" class="headerlink" title="flushSchedulerQueue"></a>flushSchedulerQueue</h3><p>终于走到flushSchedulerQueue函数了，这里才是真正视图更新的地方，先看看内部的逻辑：</p>
+<ol>
+<li>queue数组升序排列</li>
+<li>判断before存在，其实只有渲染watcher创建时有配置before，所以对于渲染watcher需要触发before配置，即组件的<code>beforeUpdate</code>钩子函数</li>
+<li>取出queue中的每个watcher，并执行watcher.run，在这个情况，queue数组中只有一个渲染watcher，可以看到watcher.run中就执行了get触发求值函数了，因为template中用到了<code>list/obj/splitMsg</code>三个值，所以求值函数会求出<code>list/obj/splitMsg</code>最新的值</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">flushSchedulerQueue</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  currentFlushTimestamp = getNow();</span><br><span class="line">  flushing = <span class="literal">true</span>;</span><br><span class="line">  <span class="keyword">var</span> watcher, id;</span><br><span class="line">  queue.sort(<span class="function"><span class="keyword">function</span> (<span class="params">a, b</span>) </span>&#123; <span class="keyword">return</span> a.id - b.id; &#125;);</span><br><span class="line">  <span class="keyword">for</span> (index = <span class="number">0</span>; index &lt; queue.length; index++) &#123;</span><br><span class="line">    watcher = queue[index];</span><br><span class="line">    <span class="keyword">if</span> (watcher.before) &#123;</span><br><span class="line">      watcher.before();</span><br><span class="line">    &#125;</span><br><span class="line">    id = watcher.id;</span><br><span class="line">    has[id] = <span class="literal">null</span>;</span><br><span class="line">    watcher.run();</span><br><span class="line">  &#125;</span><br><span class="line">  callUpdatedHooks(updatedQueue);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 重置任务状态</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">resetSchedulerState</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  queue.length = <span class="number">0</span>;</span><br><span class="line">  has = &#123;&#125;;</span><br><span class="line">  waiting = flushing = <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Watcher.prototype.run = <span class="function"><span class="keyword">function</span> <span class="title">run</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">this</span>.active) &#123;</span><br><span class="line">    <span class="keyword">var</span> value = <span class="built_in">this</span>.get();</span><br><span class="line">    <span class="keyword">if</span> ( value !== <span class="built_in">this</span>.value || isObject(value) || <span class="built_in">this</span>.deep) &#123;</span><br><span class="line">      <span class="keyword">var</span> oldValue = <span class="built_in">this</span>.value;</span><br><span class="line">      <span class="built_in">this</span>.value = value;</span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">this</span>.user) &#123;</span><br><span class="line">        <span class="built_in">this</span>.cb.call(<span class="built_in">this</span>.vm, value, oldValue);</span><br><span class="line">      &#125; </span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>以上就是Vue的更新策略，其实就是将所有的<code>watcher</code>都放到<code>queue</code>数组中，并异步执行<code>watcher.run</code>从而让视图更新，当然我们知道触发求值函数一定可以算出新值，即<code>list/obj/splitMsg</code>，那算出新值之后是直接把新值作为内容直接渲染到dom结构中嘛？这样其实并不合理，假如我们没有更新<code>list</code>,那算出的<code>list</code>就和更新之前的<code>list</code>是一样的。这种情况，其实没有必要把没变化的<code>list</code>作为内容直接渲染到dom结构中。即在算出新值时，我们需要和更新前的值比较，新值和老值一样，就不进行dom操作，新值和老值不一样，就更新dom，这就涉及到解析来我们要讲的Vue内部的diff算法了。</p>
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2020/12/19/vue06/" title="6. Vue的diff算法" class="prev">PREV</a><a href="/2020/12/15/vue04/" title="4. Vue首次挂载，发生了肾么事?" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2020 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 6. Vue的diff算法 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="6. Vue的diff算法 - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">6. Vue的diff算法</h1><div class="post-info">2020-12-19<p class="visit"><i data-identity="2020/12/19/vue06/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>上一节我们已经知道在触发更新后，<code>渲染watcher</code>会重新触发求值函数，求值函数内部先要<code>vm._render()</code>生成新值对应的虚拟dom，并把结果交给<code>vm._update</code>处理，接下来我们看看<code>vm._update</code>内部的实现逻辑？</p>
+<ol>
+<li><code>prevVnode</code>存储上次更新时的虚拟dom</li>
+<li><code>vm._vnode</code>存储本次更新时的虚拟dom</li>
+<li>如果<code>prevVnode</code>没有值，即首次挂载组件，则创建真实dom</li>
+<li>如果<code>prevVnode</code>有值，即非首次挂载组件，那就把更新前后的虚拟dom传入<code>vm.__patch__</code>函数中去比较。</li>
+</ol>
+<p>显然组件更新时，应该走进else语句。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">updateComponent = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    vm._update(vm._render(), hydrating);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Vue.prototype._update = <span class="function"><span class="keyword">function</span> (<span class="params">vnode, hydrating</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 此处省略若干代码</span></span><br><span class="line">    <span class="keyword">var</span> vm = <span class="built_in">this</span>;</span><br><span class="line">    <span class="keyword">var</span> prevEl = vm.$el;</span><br><span class="line">    <span class="keyword">var</span> prevVnode = vm._vnode;</span><br><span class="line">    vm._vnode = vnode;</span><br><span class="line">    <span class="keyword">if</span> (!prevVnode) &#123;</span><br><span class="line">        <span class="comment">// initial render</span></span><br><span class="line">        vm.$el = vm.__patch__(vm.$el, vnode, hydrating, <span class="literal">false</span> <span class="comment">/* removeOnly */</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// updates</span></span><br><span class="line">        vm.$el = vm.__patch__(prevVnode, vnode);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="diff算法的入口"><a href="#diff算法的入口" class="headerlink" title="diff算法的入口"></a>diff算法的入口</h2><p>函数<code>vm.__patch__</code>是Vue的diff算法入口，我们看看内部是如何处理的？</p>
+<ol>
+<li>判断当前虚拟dom是否是静态节点，如果是静态节点，那就不再进行比较了。</li>
+<li>把新老虚拟dom，放到<code>cbs.update</code>数组中各个函数去比较，其中<code>cbs.update</code>数组中各函数的作用是比较虚拟dom的属性</li>
+<li>把新老虚拟dom,放到<code>updateChildren</code>函数中去比较，比较出差异，最终更新视图</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">patchVnode</span>(<span class="params"> oldVnode,vnode</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 此处省略若干代码</span></span><br><span class="line">    <span class="keyword">if</span> (isTrue(vnode.isStatic) &amp;&amp; isTrue(oldVnode.isStatic) &amp;&amp; vnode.key === oldVnode.key &amp;&amp;</span><br><span class="line">        (isTrue(vnode.isCloned) || isTrue(vnode.isOnce))) &#123;</span><br><span class="line">        vnode.componentInstance = oldVnode.componentInstance;</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> data = vnode.data;</span><br><span class="line">    <span class="keyword">var</span> oldCh = oldVnode.children;</span><br><span class="line">    <span class="keyword">var</span> ch = vnode.children;</span><br><span class="line">    <span class="keyword">if</span> (isDef(data) &amp;&amp; isPatchable(vnode)) &#123;</span><br><span class="line">        <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; cbs.update.length; ++i) &#123; cbs.update[i](oldVnode, vnode); &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (isDef(oldCh) &amp;&amp; isDef(ch)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (oldCh !== ch) &#123; updateChildren(elm, oldCh, ch) &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="比较虚拟dom的data"><a href="#比较虚拟dom的data" class="headerlink" title="比较虚拟dom的data"></a>比较虚拟dom的data</h2><p>上面说到的<code>cbs.update</code>的结构以及假定本次生成的虚拟dom如下，其中：</p>
+<ol>
+<li><code>updateAttrs</code>是用来比对attrs的差异并更新的</li>
+<li><code>updateclass</code>是用来比对class的差异并更新的</li>
+<li><code>updateDomListeners</code>是用来比对绑定事件的差异并更新的</li>
+<li><code>updateDOMProps</code>是用来比对</li>
+<li><code>updateStyle</code>是用来比对样式的差异并更新的</li>
+<li><code>update</code>是用来比对ref的差异并更新的</li>
+<li><code>updateDirectives</code>是用来比对自定义指令的差异并更新的<br>具体详情见:<a target="_blank" rel="noopener" href="https://cn.vuejs.org/v2/guide/render-function.html">https://cn.vuejs.org/v2/guide/render-function.html</a><br>归根结底，<code>cbs.update</code>内部的函数其实就是用来找到<code>虚拟dom上的</code>所有属性并更新的，不过上面的比较方式是有弊端的，如果我本次没有更新这些虚拟dom上的属性，Vue内部还是会比较dom上的全部属性(全量比较)。<br>其实当我们没有更新虚拟dom上的属性时，最好的做法就是不比较，只有在更新某些属性的时候，我们再比较这些更新的属性。这样做可以节省无谓的比较次数。当然Vue2.x采用的是全量比较，在Vue3中就给需要更新的属性加上flag，只更新有flag的属性值。这也是Vue3的性能比Vue2好的一个原因。</li>
+</ol>
+<img src="/images/vdom.png" width='400px'>
+<img src="/images/updatefn.png" width='400px'>
+
+<h2 id="比较虚拟dom的children"><a href="#比较虚拟dom的children" class="headerlink" title="比较虚拟dom的children"></a>比较虚拟dom的children</h2><p>如果说上面的<code>cbs.update</code>函数是用来比较<code>虚拟dom属性</code>的差异，那<code>updateChildren</code>就是用来比较<code>虚拟dom的子节点</code>差异的，我们接下来看看<code>updateChildren</code>的内部实现：</p>
+<ol>
+<li>定义四个指针，其中<code>oldStartIdx,oldEndIdx</code>指向更新前虚拟dom(老虚拟dom)的首尾索引，<code>newStartIdx,newEndIdx</code>指向更新后(新虚拟dom)的首尾索引。</li>
+<li>再定义四个指针，其中<code>oldStartVnode,oldEndVnode</code>指向更新前虚拟dom的首尾节点，<code>newStartVnode,newEndVnode</code>指向更新后(新虚拟dom)的首尾节点。</li>
+<li>启动while循环，前两个判断是处理越界情况的并不是重点，重要的是后面四个else if判断，分别是：<ol>
+<li>判断老dom的头和新dom中的头是否是同一个虚拟dom，如果是就进行比较，比较出差异并更新视图，比较结束后，移动<code>oldStartIdx,newStartIdx,oldStartVnode,newStartVnode</code>指针。</li>
+<li>判断老dom的尾和新dom中的尾是否是同一个虚拟dom，如果是就进行比较，比较出差异并更新视图，比较结束后，移动<code>oldEndIdx,newEndIdx,oldEndVnode,newEndVnode</code>指针。</li>
+<li>判断老dom的头和新dom中的尾是否是同一个虚拟dom，如果是就进行比较，比较出差异并更新视图，比较结束后，移动<code>oldStartIdx,newEndIdx,oldStartVnode,newEndVnode</code>指针。</li>
+<li>判断老dom的尾和新dom中的头是否是同一个虚拟dom，如果是就进行比较，比较出差异并更新视图，比较结束后，移动<code>oldEndIdx,newStartIdx,oldEndVnode,newStartVnode</code>指针。</li>
+<li>如果上面四个判断都没走进去，那就基于本次添加的新dom创建真实dom，并添加到页面上。<br>归根结底上面的四个判断，<code>其实就是老头对新头，老尾对新尾，老头对新尾，老尾对新头的比较，这样比较的好处是尽可能多的复用老的虚拟dom</code>。</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">updateChildren</span>(<span class="params">parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> oldStartIdx = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">var</span> newStartIdx = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">var</span> oldEndIdx = oldCh.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">var</span> oldStartVnode = oldCh[<span class="number">0</span>];</span><br><span class="line">    <span class="keyword">var</span> oldEndVnode = oldCh[oldEndIdx];</span><br><span class="line">    <span class="keyword">var</span> newEndIdx = newCh.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">var</span> newStartVnode = newCh[<span class="number">0</span>];</span><br><span class="line">    <span class="keyword">var</span> newEndVnode = newCh[newEndIdx];</span><br><span class="line">    <span class="keyword">var</span> oldKeyToIdx, idxInOld, vnodeToMove, refElm;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (oldStartIdx &lt;= oldEndIdx &amp;&amp; newStartIdx &lt;= newEndIdx) &#123;</span><br><span class="line">        <span class="keyword">if</span> (isUndef(oldStartVnode)) &#123;</span><br><span class="line">            oldStartVnode = oldCh[++oldStartIdx]; <span class="comment">// Vnode has been moved left</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (isUndef(oldEndVnode)) &#123;</span><br><span class="line">            oldEndVnode = oldCh[--oldEndIdx];</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sameVnode(oldStartVnode, newStartVnode)) &#123;</span><br><span class="line">            patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx);</span><br><span class="line">            oldStartVnode = oldCh[++oldStartIdx];</span><br><span class="line">            newStartVnode = newCh[++newStartIdx];</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sameVnode(oldEndVnode, newEndVnode)) &#123;</span><br><span class="line">            patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx);</span><br><span class="line">            oldEndVnode = oldCh[--oldEndIdx];</span><br><span class="line">            newEndVnode = newCh[--newEndIdx];</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sameVnode(oldStartVnode, newEndVnode)) &#123; <span class="comment">// Vnode moved right</span></span><br><span class="line">            patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx);</span><br><span class="line">            canMove &amp;&amp; nodeOps.insertBefore(parentElm, oldStartVnode.elm, nodeOps.nextSibling(oldEndVnode.elm));</span><br><span class="line">            oldStartVnode = oldCh[++oldStartIdx];</span><br><span class="line">            newEndVnode = newCh[--newEndIdx];</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sameVnode(oldEndVnode, newStartVnode)) &#123; <span class="comment">// Vnode moved left</span></span><br><span class="line">            patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx);</span><br><span class="line">            canMove &amp;&amp; nodeOps.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm);</span><br><span class="line">            oldEndVnode = oldCh[--oldEndIdx];</span><br><span class="line">            newStartVnode = newCh[++newStartIdx];</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (isUndef(oldKeyToIdx)) &#123; </span><br><span class="line">                oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx); </span><br><span class="line">            &#125;</span><br><span class="line">            idxInOld = isDef(newStartVnode.key) ? oldKeyToIdx[newStartVnode.key] : findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx);</span><br><span class="line">            <span class="keyword">if</span> (isUndef(idxInOld)) &#123; <span class="comment">// New element</span></span><br><span class="line">                createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm, <span class="literal">false</span>, newCh, newStartIdx);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                vnodeToMove = oldCh[idxInOld];</span><br><span class="line">                <span class="keyword">if</span> (sameVnode(vnodeToMove, newStartVnode)) &#123;</span><br><span class="line">                    patchVnode(vnodeToMove, newStartVnode, insertedVnodeQueue, newCh, newStartIdx);</span><br><span class="line">                    oldCh[idxInOld] = <span class="literal">undefined</span>;</span><br><span class="line">                    canMove &amp;&amp; nodeOps.insertBefore(parentElm, vnodeToMove.elm, oldStartVnode.elm);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="comment">// same key but different element. treat as new element</span></span><br><span class="line">                    createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm, <span class="literal">false</span>, newCh, newStartIdx);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            newStartVnode = newCh[++newStartIdx];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (oldStartIdx &gt; oldEndIdx) &#123;</span><br><span class="line">        refElm = isUndef(newCh[newEndIdx + <span class="number">1</span>]) ? <span class="literal">null</span> : newCh[newEndIdx + <span class="number">1</span>].elm;</span><br><span class="line">        addVnodes(parentElm, refElm, newCh, newStartIdx, newEndIdx, insertedVnodeQueue);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (newStartIdx &gt; newEndIdx) &#123;</span><br><span class="line">        removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="sameVNode"><a href="#sameVNode" class="headerlink" title="sameVNode"></a>sameVNode</h2><p>上面的<code>updateChildren</code>函数中用到<code>sameVNode</code>来判断是否是同一个虚拟dom，我们看看内部是如何判断的？</p>
+<ol>
+<li><code>key</code>值必须相同，在没有给虚拟dom添加<code>key</code>的情况下，<code>key</code>都是<code>undefined</code>，所以在没有手动添加key的情况下<code>a.key===b.key</code>成立，都是<code>undefined</code>。</li>
+<li><code>tag</code>值必须相同，即虚拟dom对应的标签名必须一样。</li>
+<li>对应<code>input</code>标签，<code>type</code>值必须相同。</li>
+</ol>
+<p>满足以上条件，才会判定是同一个虚拟dom。才会有走到同一个虚拟dom的<code>patch</code>逻辑中。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">sameVnode</span>(<span class="params">a, b</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (</span><br><span class="line">        a.key === b.key &amp;&amp; (</span><br><span class="line">        (</span><br><span class="line">            a.tag === b.tag &amp;&amp;</span><br><span class="line">            a.isComment === b.isComment &amp;&amp;</span><br><span class="line">            isDef(a.data) === isDef(b.data) &amp;&amp;</span><br><span class="line">            sameInputType(a, b)</span><br><span class="line">        ) || (</span><br><span class="line">            isTrue(a.isAsyncPlaceholder) &amp;&amp;</span><br><span class="line">            a.asyncFactory === b.asyncFactory &amp;&amp;</span><br><span class="line">            isUndef(b.asyncFactory.error)</span><br><span class="line">        )</span><br><span class="line">        )</span><br><span class="line">    )</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="v-for的key"><a href="#v-for的key" class="headerlink" title="v-for的key"></a>v-for的key</h2><p>我们是不建议在列表循环时，用索引来动态绑定<code>key</code>值的，为什么呢，可以看下面的情况:</p>
+<ol>
+<li>对比老dom的头和新dom的头，发现<code>key</code>都是0,则判定是同一个虚拟dom，比较出差异，由1-&gt;3 ，更新dom，之后移动指针</li>
+<li>重复第一步， 比对老dom的头和新dom的头，发现<code>key</code>都是1,则判定是同一个虚拟dom，没有比较出差异，不更新dom，之后移动指针</li>
+<li>重复第一步， 比对老dom的头和新dom的头，发现<code>key</code>都是2,则判定是同一个虚拟dom，比较出差异，由3-&gt;1 ，更新dom</li>
+</ol>
+<p><code>根据以上分析，用索引来动态绑定key值会有两次dom操作。</code><br><img src="/images/before.png" width='500px'></p>
+<p>让我们换个方式，用数组内部来动态绑定<code>key</code>：</p>
+<ol>
+<li>对比老dom的头和新dom的头，发现<code>key</code>不同，老头<code>key：1</code>,新头<code>key：3</code>，则判定不是同一个虚拟dom。</li>
+<li>对比老dom的头和新dom的尾，发现<code>key</code>都是1，则判定是同一个虚拟dom，没有比较出差异，不更新dom，之后移动指针</li>
+<li>重复第一步， 比对老dom的头和新dom的头，发现<code>key</code>不同，老头<code>key：2</code>,新头<code>key：3</code>，则判定不是同一个虚拟dom。</li>
+<li>对比老dom的头和新dom的尾，发现<code>key</code>都是2，则判定是同一个虚拟dom，没有比较出差异，不更新dom，之后移动指针</li>
+<li>重复第一步， 比对老dom的头和新dom的头，发现<code>key</code>都是3,则判定是同一个虚拟dom，没有比较出差异，不更新dom，之后移动指针</li>
+</ol>
+<p><code>根据以上分析，用数组内部来动态绑定key值没有进行dom操作。</code></p>
+<img src="/images/after.png" width='500px'>
+
+
+
+
+
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2020/12/20/vue07/" title="7. Vue的组件系统" class="prev">PREV</a><a href="/2020/12/17/vue05/" title="5. Vue的更新策略" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2020 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>
