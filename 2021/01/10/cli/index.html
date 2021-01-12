@@ -1,0 +1,216 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><meta name="google-site-verification" content="K7thEgdLm0UfRWJ5MGdF7sCcjClSzAlxFLPv2Oz5CGM"><title> 自定义脚手架 · Hexo</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="自定义脚手架 - heaven"><meta name="keywords"><meta name="author" content="heaven"><link rel="short icon" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/favicon.ico"><link rel="stylesheet" href="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="http://example.com/atom.xml" title="Hexo"><script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script><meta name="generator" content="Hexo 5.2.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/logo.png"></a><ul id="nav_list" class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/read/" target="_self" data-hover="读书" class="nav-list-link">读书</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div><div id="nav_btn" class="nav-btn"><span></span><span></span><span></span></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">自定义脚手架</h1><div class="post-info">2021-01-10<p class="visit"><i data-identity="2021/01/10/cli/" class="article-timer"></i><span>次访问</span></p></div><div class="post-content"><p>随着前端工程化的发展，前端领域出现了很多脚手架工具，例如<code>vue-cli</code>，<code>create-react-app</code>， <code>create-vite-app</code>等。这类脚手架工具可以帮我们快速搭建项目的初始结构，减少人肉操作，之前我们都是使用别人写的脚手架工具，今天我们就制作自己的脚手架工具。</p>
+<h2 id="commander"><a href="#commander" class="headerlink" title="commander"></a>commander</h2><p>commander是<code>npm</code>上非常流程的自定义命令行工具包，我们可以通过这个包在终端上输入自己创建的指令来控制程序的执行。<code>vue-cli</code>，<code>create-react-app</code>， <code>create-vite-app</code>这些脚手架工具也是使用了<code>commander</code>,<a target="_blank" rel="noopener" href="https://github.com/tj/commander.js">https://github.com/tj/commander.js</a> 这个地址里有<code>commander</code>的详细用法，本篇文章就不详细介绍了。除了<code>commander</code>之外，我们还需要<code>download-git-repo</code>，<code>ejs</code>，<code>chalk</code>这些第三方模块。初始的项目模版如下：</p>
+<img src="/images/init.png">
+
+<p>对于<code>vue-cli</code>，这类脚手架，我们会通过<code>vue -V</code>来用脚手架的版本，同样的，对于我们的脚手架也需要配置一个指令来查看版本，所以我们在<code>pageage.json</code>中配置<code>heaven</code>这个bin指令，其作用就是可以在终端中全局使用<code>heaven</code>指令。当然只是在<code>pageage.json</code>中配置还不够。还需要通过<code>npm link</code>把 <code>heaven</code>指令放到<code>/usr/local/bin  </code>中。效果如下，至于<code>heaven -V</code>如何查看版本，这个就需要借助<code>commander</code>了。</p>
+<img src="/images/link.png">
+
+<h3 id="index-js"><a href="#index-js" class="headerlink" title="index.js"></a>index.js</h3><p>在<code>index.js</code>中引入了自定义模块<code>createCommands</code>，该模块存放了我们创建的指令</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// index.js</span></span><br><span class="line"><span class="meta">#!/usr/bin/env node</span></span><br><span class="line"><span class="keyword">const</span> program = <span class="built_in">require</span>(<span class="string">&#x27;commander&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> &#123; createCommands &#125; = <span class="built_in">require</span>(<span class="string">&#x27;./lib/core/create&#x27;</span>)</span><br><span class="line"><span class="comment">// 定义版本</span></span><br><span class="line">program.version(<span class="built_in">require</span>(<span class="string">&#x27;./package.json&#x27;</span>).version);</span><br><span class="line"><span class="comment">// 自定义指令</span></span><br><span class="line">createCommands()</span><br><span class="line"><span class="comment">// 解析指令</span></span><br><span class="line">program.parse(process.argv);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="创建指令"><a href="#创建指令" class="headerlink" title="创建指令"></a>创建指令</h2><p>在<code>createCommands.js</code>这个模块中，我们创建了三个指令：</p>
+<ol>
+<li><code>heaven create 项目名</code>，一旦执行该指令就会触发<code>createProject</code>回调</li>
+<li><code>heaven addC 组件名</code>，一旦执行该指令就会触发<code>createComponent</code>回调</li>
+<li><code>heaven addP 页面名</code>，一旦执行该指令就会触发<code>createPage</code>回调</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// createCommands.js</span></span><br><span class="line"><span class="keyword">const</span> program = <span class="built_in">require</span>(<span class="string">&#x27;commander&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> &#123; createProject, createComponent, createPage &#125; = <span class="built_in">require</span>(<span class="string">&#x27;./actions&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createCommands</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    program</span><br><span class="line">        .command(<span class="string">&#x27;create &lt;project&gt;&#x27;</span>)</span><br><span class="line">        .description(<span class="string">&#x27;clone clone a repository into a newly created directory&#x27;</span>)</span><br><span class="line">        .action(createProject)</span><br><span class="line"></span><br><span class="line">    program</span><br><span class="line">        .command(<span class="string">&#x27;addC &lt;name&gt;&#x27;</span>)</span><br><span class="line">        .description(<span class="string">&#x27;create a component&#x27;</span>)</span><br><span class="line">        .action(<span class="function"><span class="params">name</span> =&gt;</span> &#123;</span><br><span class="line">            createComponent(name, name.toLowerCase())</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">    program</span><br><span class="line">        .command(<span class="string">&#x27;addP &lt;name&gt;&#x27;</span>)</span><br><span class="line">        .description(<span class="string">&#x27;create a page&#x27;</span>)</span><br><span class="line">        .action(<span class="function"><span class="params">name</span> =&gt;</span> &#123;</span><br><span class="line">            createPage(name, name.toLowerCase())</span><br><span class="line">        &#125;)</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">module</span>.exports = &#123;</span><br><span class="line">    createCommands</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="createProject"><a href="#createProject" class="headerlink" title="createProject"></a>createProject</h3><p>其实<code>heaven create 项目名</code>这个指令就是模拟<code>vue create 项目名</code>这个指令，当我们执行<code>vue create 项目名</code>时，需要等好久，其实这些等待的时间就是在下载脚手架的初始模版，所以同样的<code>heaven create 项目名</code>这个指令，也需要下载初始模版。理解了这个，再看<code>createProject</code>内部的逻辑就很清晰了：</p>
+<ol>
+<li>定义下载等待时的提示信息</li>
+<li>下载初始模版，这时需要用<code>download-git-repo</code>来下载，我的项目模版放在了<code>https://github.com/840979094/vue-temp.git</code></li>
+<li>执行<code>npm install</code>，该指令的作用是下载好项目模版后，直接安装项目依赖</li>
+<li>执行<code>npm run serve</code>，该指令的作用是安装好项目依赖后，直接运行项目</li>
+</ol>
+<p>值得注意的是，<code>npm install</code>，<code>npm run serve</code>这俩指令都是运行在<code>node</code>的内置核心模块<code>child_process</code>单独开辟的子进程中。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> &#123; promisify &#125; = <span class="built_in">require</span>(<span class="string">&#x27;util&#x27;</span>);</span><br><span class="line"><span class="keyword">const</span> &#123; resolve &#125; = <span class="built_in">require</span>(<span class="string">&#x27;path&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> downloadRepo = promisify(<span class="built_in">require</span>(<span class="string">&#x27;download-git-repo&#x27;</span>))</span><br><span class="line"><span class="keyword">const</span> &#123; hint &#125; = <span class="built_in">require</span>(<span class="string">&#x27;../utils/log&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> terminal = <span class="built_in">require</span>(<span class="string">&#x27;../utils/terminal&#x27;</span>);</span><br><span class="line"><span class="keyword">const</span> &#123; ejsComplier, mkdirSync, writeFile &#125; = <span class="built_in">require</span>(<span class="string">&#x27;../utils/file&#x27;</span>)</span><br><span class="line"><span class="keyword">const</span> &#123; remoteRepo &#125; = <span class="built_in">require</span>(<span class="string">&#x27;../utils/constants&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">createProject</span>(<span class="params">project</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 1.下载提示</span></span><br><span class="line">    hint(<span class="string">&#x27;heaven_cli helps you create your project, please wait a moment~~~&#x27;</span>)</span><br><span class="line">    <span class="comment">// 2.clone远程仓库的代码</span></span><br><span class="line">    <span class="keyword">await</span> downloadRepo(remoteRepo, project, &#123; <span class="attr">clone</span>: <span class="literal">true</span> &#125;)</span><br><span class="line">    <span class="comment">// 3.执行终端命令npm install</span></span><br><span class="line">    <span class="keyword">const</span> npm = process.platform === <span class="string">&#x27;win32&#x27;</span> ? <span class="string">&#x27;npm.cmd&#x27;</span> : <span class="string">&#x27;npm&#x27;</span>;</span><br><span class="line">    <span class="keyword">await</span> terminal.spawn(npm, [<span class="string">&#x27;install&#x27;</span>], &#123; <span class="attr">cwd</span>: <span class="string">`./<span class="subst">$&#123;project&#125;</span>`</span> &#125;);</span><br><span class="line">    <span class="comment">// 4.运行项目</span></span><br><span class="line">    <span class="keyword">await</span> terminal.spawn(npm, [<span class="string">&#x27;run&#x27;</span>, <span class="string">&#x27;serve&#x27;</span>], &#123; <span class="attr">cwd</span>: <span class="string">`./<span class="subst">$&#123;project&#125;</span>`</span> &#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// utils/log.js</span></span><br><span class="line"><span class="keyword">const</span> chalk = <span class="built_in">require</span>(<span class="string">&#x27;chalk&#x27;</span>);</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">hint</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(chalk.blue(...arguments))</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">error</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(chalk.red(...arguments))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// utils/terminal.js</span></span><br><span class="line"><span class="keyword">const</span> &#123; spawn &#125; = <span class="built_in">require</span>(<span class="string">&#x27;child_process&#x27;</span>);</span><br><span class="line"><span class="keyword">const</span> spawnCommand = <span class="function">(<span class="params">...args</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resovle, reject</span>) =&gt;</span> &#123;</span><br><span class="line">        <span class="keyword">const</span> childProcess = spawn(...args);</span><br><span class="line">        childProcess.stdout.pipe(process.stdout);</span><br><span class="line">        childProcess.stderr.pipe(process.stderr);</span><br><span class="line">        childProcess.on(<span class="string">&#x27;close&#x27;</span>, resovle)</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// utils/constant.js 项目模版地址</span></span><br><span class="line"><span class="keyword">const</span> remoteRepo = <span class="string">&quot;direct:https://github.com/840979094/vue-temp.git&quot;</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="createComponent"><a href="#createComponent" class="headerlink" title="createComponent"></a>createComponent</h3><p>一般情况下，在创建组件时，我们会有两个手动操作：</p>
+<ol>
+<li>新建组件文件夹</li>
+<li>新建组件对应的单文件组件<br>而<code>heaven addC 组件名</code>这个指令就能够自动执行这两步操作，假定终端执行<code>heaven addC helloworld</code>指令，我们来看看<code>createComponent</code>内部的逻辑：</li>
+<li>创建<code>src/components/helloworld</code>文件夹</li>
+<li>使用<code>ejs</code>来编译<code>component.ejs</code>模版，并注入变量</li>
+<li>将编译好的结果，写入到<code>src/components/helloworld/helloworld.vue</code>中<br>这样，当我们执行<code>heaven addC helloworld</code>，就会自动创建组件文件夹&amp;单文件组件了。</li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建组件</span></span><br><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">createComponent</span>(<span class="params">name, dest</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">const</span> dirname = resolve(process.cwd(), <span class="string">&quot;src/components&quot;</span>, dest)</span><br><span class="line">    mkdirSync(dirname)</span><br><span class="line">    <span class="keyword">const</span> templatePath = resolve(__dirname, <span class="string">&#x27;../template/component.ejs&#x27;</span>)</span><br><span class="line">    <span class="keyword">const</span> result = <span class="keyword">await</span> ejsComplier(templatePath, &#123; name &#125;)</span><br><span class="line">    writeFile(resolve(dirname, <span class="string">`<span class="subst">$&#123;name&#125;</span>.vue`</span>), result)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// file.js</span></span><br><span class="line"><span class="keyword">const</span> ejsComplier = <span class="function"><span class="keyword">function</span> (<span class="params">path, data</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">        ejs.renderFile(path, data, <span class="function"><span class="keyword">function</span> (<span class="params">err, result</span>) </span>&#123;</span><br><span class="line">            err ? reject(err) : resolve(result)</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> mkdirSync = <span class="function">(<span class="params">dirname</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (fs.existsSync(dirname)) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 不存在,判断父亲文件夹是否存在？</span></span><br><span class="line">        <span class="keyword">if</span> (mkdirSync(path.dirname(dirname))) &#123;</span><br><span class="line">            <span class="comment">//父级文件夹存在 那就创建子文件夹</span></span><br><span class="line">            fs.mkdirSync(dirname)</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面用到的<code>component.ejs</code>模版如下，我们这里用的是<code>ts</code>模版，当然你也可以使用<code>js</code>模版。</p>
+<img src="/images/template.png" >
+
+<h3 id="createPage"><a href="#createPage" class="headerlink" title="createPage"></a>createPage</h3><p>一般情况下，在创建页面时，我们会有三个手动操作：</p>
+<ol>
+<li>新建页面文件夹</li>
+<li>新建页面对应的单文件组件</li>
+<li>在<code>router.js</code>中把创建的页面添加到路由配置表中<br>而<code>heaven addP 页面名</code>这个指令就能够自动执行这三步操作，假定终端执行<code>heaven addP home</code>指令，我们来看看<code>createPage</code>内部的逻辑：</li>
+<li>创建<code>src/pages/home</code>文件夹</li>
+<li>使用<code>ejs</code>来编译<code>component.ejs</code>模版，并注入变量</li>
+<li>将编译好的结果，写入到<code>src/page/home/home.vue</code>中</li>
+<li>使用<code>ejs</code>来编译<code>router.ejs</code>模版，并注入变量</li>
+<li>将编译好的结果，写入到<code>src/router/home.js</code>中</li>
+</ol>
+<p>这样，当我们执行<code>heaven addP home</code>，就会自动创建页面文件夹&amp;单文件组件，并且把创建的页面自动添加到路由配置表中。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">createPage</span>(<span class="params">name, dest</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 创建页面对应的文件夹和单文件组件</span></span><br><span class="line">    <span class="keyword">const</span> pageDirname = resolve(process.cwd(), <span class="string">&quot;src/pages&quot;</span>, dest)</span><br><span class="line">    mkdirSync(pageDirname)</span><br><span class="line">    <span class="keyword">const</span> pagePath = resolve(__dirname, <span class="string">&#x27;../template/component.ejs&#x27;</span>)</span><br><span class="line">    <span class="keyword">const</span> pageResult = <span class="keyword">await</span> ejsComplier(pagePath, &#123; name &#125;)</span><br><span class="line">    writeFile(resolve(pageDirname, <span class="string">`<span class="subst">$&#123;name&#125;</span>.vue`</span>), pageResult)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 把创建的页面 自动添加到路由表中</span></span><br><span class="line">    <span class="keyword">const</span> routerDirname = resolve(process.cwd(), <span class="string">&quot;src/router&quot;</span>)</span><br><span class="line">    <span class="keyword">const</span> routerPath = resolve(__dirname, <span class="string">&#x27;../template/router.ejs&#x27;</span>)</span><br><span class="line">    <span class="keyword">const</span> routerResult = <span class="keyword">await</span> ejsComplier(routerPath, &#123; name &#125;)</span><br><span class="line">    writeFile(resolve(routerDirname, <span class="string">`<span class="subst">$&#123;name&#125;</span>.js`</span>), routerResult)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面用到的<code>router.ejs</code>模版如下:</p>
+<img src="/images/router.png" >
+
+<h2 id="发布到npm"><a href="#发布到npm" class="headerlink" title="发布到npm"></a>发布到npm</h2><p>这样，其实我们的脚手架基本就可以工作了，接着我们把脚手架发布到<code>npm</code>上，这样谁都可以下载这个脚手架了。</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://www.npmjs.com/login">https://www.npmjs.com/login</a> 注册<code>npm</code>账号</li>
+<li>终端输入<code>npm login</code>登录npm账号</li>
+<li>终端输入<code>npm publish</code>发布</li>
+</ol>
+<p>结果如下所示：</p>
+<img src="/images/publish.png">
+
+<h2 id="项目模版结构"><a href="#项目模版结构" class="headerlink" title="项目模版结构"></a>项目模版结构</h2><p>如果发布到<code>npm</code>成功，就可以<code>npm i heaven_cli -g</code>让同时下载你的脚手架了。当然这个脚手架使用的项目模版放在了<code>https://github.com/840979094/vue-temp.git</code>，我们再看看这个模版的结构，其中模版的路由配置代码如下:</p>
+<ol>
+<li>初始路由配置表<code>routes</code>为空</li>
+<li><code>require.context</code>递归读取<code>router</code>目录下所有的<code>js/ts</code>文件，加载对应的模块并添加到<code>routes</code>中，之所以要把路由分模块管理，是因为随着项目变得越来也大，如果不分模块管理，<code>routes</code>会非常臃肿，不利于项目当维护。<code>require.context</code>的具体用法见<a target="_blank" rel="noopener" href="https://cn.vuejs.org/v2/guide/components-registration.html#%E5%9F%BA%E7%A1%80%E7%BB%84%E4%BB%B6%E7%9A%84%E8%87%AA%E5%8A%A8%E5%8C%96%E5%85%A8%E5%B1%80%E6%B3%A8%E5%86%8C">https://cn.vuejs.org/v2/guide/components-registration.html#%E5%9F%BA%E7%A1%80%E7%BB%84%E4%BB%B6%E7%9A%84%E8%87%AA%E5%8A%A8%E5%8C%96%E5%85%A8%E5%B1%80%E6%B3%A8%E5%86%8C</a></li>
+</ol>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Vue <span class="keyword">from</span> <span class="string">&#x27;vue&#x27;</span></span><br><span class="line"><span class="keyword">import</span> VueRouter, &#123; RouteConfig &#125; <span class="keyword">from</span> <span class="string">&#x27;vue-router&#x27;</span></span><br><span class="line"><span class="keyword">import</span> <span class="string">&#x27;./home&#x27;</span></span><br><span class="line">Vue.use(VueRouter)</span><br><span class="line"></span><br><span class="line"><span class="keyword">let</span> routes: RouteConfig[] = []</span><br><span class="line"><span class="comment">// 自动注入路由记录到routes中</span></span><br><span class="line"><span class="keyword">const</span> requireCxt = <span class="built_in">require</span>.context(<span class="string">&quot;./&quot;</span>, <span class="literal">true</span>, <span class="regexp">/.(js|ts)$/</span>)</span><br><span class="line"></span><br><span class="line">requireCxt.keys().forEach(<span class="function"><span class="params">filename</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="comment">// 如果不是./index 那就处理</span></span><br><span class="line">    <span class="keyword">if</span> (filename.indexOf(<span class="string">&quot;./index&quot;</span>) !== <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">const</span> routesModule = requireCxt(filename)</span><br><span class="line">        routes = [routesModule.default, ...routes]</span><br><span class="line">    &#125;</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> router = <span class="keyword">new</span> VueRouter(&#123;</span><br><span class="line">    mode: <span class="string">&#x27;history&#x27;</span>,</span><br><span class="line">    base: process.env.BASE_URL,</span><br><span class="line">    routes</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> router</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+
+</div></article></div><div class="right-container"><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2021/01/11/vue-config-js/" title="vue.config.js的常用配置" class="prev">PREV</a><a href="/2021/01/08/axios/" title="axios在脚手架中的使用" class="next">NEXT</a></div><a href="#comment" class="comment-anchor"></a><div id="vcomments"></div><script>new Valine({
+    el: "#vcomments",
+    appId: "aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz",
+    appKey: "FdzS5SOPHdhYQoEUngQ8K2QW",
+    notify: false,
+    verify: false,
+    avatar: "robohash",
+    visitor: true,
+    placeholder: "随便说点什么～.～",
+});</script><div class="copyright"><p>© 2016 - 2021 <a target="_blank">heaven</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a></p><p> <span style="padding-right: 6px;">闽ICP备16007301号-2</span></p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/jquery-1.8.2.min.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/articleCatalog.js"></script><script src="https://bubuzou.oss-cn-shenzhen.aliyuncs.com/blog/202010/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script><script>const valineAPI = (() => {
+try {
+    AV.init("aD8jJBpu4oew3ovNY73z6Rdq-gzGzoHsz", "FdzS5SOPHdhYQoEUngQ8K2QW");
+} catch(error) {}
+const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+    query.equalTo("identity", identity);
+    query.find().then(results => {
+        resolve(results.length > 0);
+    }, error => reject(error));
+    })
+}
+
+const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+    let querys = [];
+    for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+    }
+    query = AV.Query.or.apply(null ,querys);
+    } else {
+    identity = identity || getRealPath();
+    query = new AV.Query("Timer");
+    query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+    query.find()
+    .then(results => resolve(results))
+    .catch(error => reject(error))
+    })
+}
+
+const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let Todo = AV.Object.extend('Timer');
+    let todo = new Todo();
+    todo.set("times", 1);
+    todo.set("identity", identity);
+    todo.save().then(res => resolve(true), error => reject(error));
+    })
+}
+
+const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+    let query = new AV.Query('Timer');
+    query.equalTo("identity", identity);
+    query.find().then(todos => {
+        todos.forEach(todo => {
+        todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+    }).then(todos => resolve(true), error => reject(error));
+    })
+}
+
+return {
+    isExist,
+    _get,
+    update,
+    create
+}
+})()
+
+const calcAndWriteTimes = () => {
+let isPost = true;
+
+let timerAllDOM = document.querySelectorAll(".article-timer");
+
+if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+    if(exist) {
+        return valineAPI.update(identity);
+    }
+    return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+}
+
+let timerDOMCache = {};
+
+for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+    timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+    timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+    };
+    }
+}
+
+let identities = Object.keys(timerDOMCache);
+valineAPI._get(identities).then(results => {
+    for(let result of results) {
+    let {identity, times} = result.attributes;
+    timerDOMCache[identity].times = times;
+    timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+    if(timerDOMCache[identity].times){
+        continue;
+    }
+    timerDOMCache[identity].dom.map(item => item.innerText = 1);
+    valineAPI.create(identity);
+    }
+}).catch(error => console.log(error.message))
+}
+
+if(true){
+calcAndWriteTimes();
+}</script></body></html>
