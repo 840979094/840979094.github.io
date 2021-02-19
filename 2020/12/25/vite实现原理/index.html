@@ -9,7 +9,7 @@
 
 <img src="/images/esmodule.png">
 
-<h3 id="异步加载"><a href="#异步加载" class="headerlink" title="异步加载"></a>异步加载</h3><p>当然，除了会发送网路请求之外，<code>ESModule</code>还可以让某个模块异步加载(按需加载)，代码如下，具体如下图所示。</p>
+<h3 id="异步加载"><a href="#异步加载" class="headerlink" title="异步加载"></a>异步加载</h3><p>当然，除了会发送网络请求之外，<code>ESModule</code>还可以让某个模块异步加载(按需加载)，代码如下，具体如下图所示。</p>
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;button id=<span class="string">&#x27;btn&#x27;</span>&gt;按钮&lt;/button&gt;</span><br><span class="line">&lt;script type=<span class="string">&quot;module&quot;</span>&gt;</span><br><span class="line"><span class="keyword">let</span> btn = <span class="built_in">document</span>.getElementById(<span class="string">&#x27;btn&#x27;</span>)</span><br><span class="line">btn.addEventListener(<span class="string">&#x27;click&#x27;</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">import</span>(<span class="string">&#x27;./a.js&#x27;</span>).then(<span class="built_in">console</span>.log)</span><br><span class="line">&#125;)</span><br><span class="line">&lt;/script&gt;</span><br></pre></td></tr></table></figure>
 
 <p><video src="/images/require.mp4"></video></p>

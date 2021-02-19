@@ -65,7 +65,7 @@
 <p>结果如下所示：</p>
 <img src="/images/publish.png">
 
-<h2 id="项目模版结构"><a href="#项目模版结构" class="headerlink" title="项目模版结构"></a>项目模版结构</h2><p>如果发布到<code>npm</code>成功，就可以<code>npm i heaven_cli -g</code>让同时下载你的脚手架了。当然这个脚手架使用的项目模版放在了<code>https://github.com/840979094/vue-temp.git</code>，我们再看看这个模版的结构，其中模版的路由配置代码如下:</p>
+<h2 id="项目模版结构"><a href="#项目模版结构" class="headerlink" title="项目模版结构"></a>项目模版结构</h2><p>如果发布到<code>npm</code>成功，就可以<code>npm i heaven_cli -g</code>让同事下载你的脚手架了。当然这个脚手架使用的项目模版放在了<code>https://github.com/840979094/vue-temp.git</code>，我们再看看这个模版的结构，其中模版的路由配置代码如下:</p>
 <ol>
 <li>初始路由配置表<code>routes</code>为空</li>
 <li><code>require.context</code>递归读取<code>router</code>目录下所有的<code>js/ts</code>文件，加载对应的模块并添加到<code>routes</code>中，之所以要把路由分模块管理，是因为随着项目变得越来也大，如果不分模块管理，<code>routes</code>会非常臃肿，不利于项目当维护。<code>require.context</code>的具体用法见<a target="_blank" rel="noopener" href="https://cn.vuejs.org/v2/guide/components-registration.html#%E5%9F%BA%E7%A1%80%E7%BB%84%E4%BB%B6%E7%9A%84%E8%87%AA%E5%8A%A8%E5%8C%96%E5%85%A8%E5%B1%80%E6%B3%A8%E5%86%8C">https://cn.vuejs.org/v2/guide/components-registration.html#%E5%9F%BA%E7%A1%80%E7%BB%84%E4%BB%B6%E7%9A%84%E8%87%AA%E5%8A%A8%E5%8C%96%E5%85%A8%E5%B1%80%E6%B3%A8%E5%86%8C</a></li>
